@@ -17,6 +17,17 @@ export interface DailyInsight {
   notes: string;
 }
 
+export interface WeeklyInsight {
+  period: { from: string; to: string };
+  summary: {
+    highlights: string[];
+    risks: string[];
+    actions: string[];
+  };
+  detail: string;
+  notes: string;
+}
+
 interface DeepSeekMessage {
   role: "system" | "user" | "assistant";
   content: string;
@@ -207,6 +218,154 @@ Berikan insight sesuai format JSON yang ditentukan.`;
     // Return fallback deterministic insight
     return generateFallbackInsight(metrics, redFlags);
   }
+}
+
+function buildWeeklyPrompt(input: {
+  period: { from: string; to: string };
+  totals: {
+    total_visits: number;
+    total_sales_amount: number;
+    total_sales_qty: number;
+    avg_conversion_rate: number;
+    total_salesmen: number;
+  };
+  topBySales: Array<{ name: string; amount: number }>;
+  topByConversion: Array<{ name: string; rate: number }>;
+  redFlagCounts: { high: number; medium: number; low: number };
+}): string {
+  return JSON.stringify(input, null, 2);
+}
+
+export async function generateWeeklyInsight(input: {
+  period: { from: string; to: string };
+  totals: {
+    total_visits: number;
+    total_sales_amount: number;
+    total_sales_qty: number;
+    avg_conversion_rate: number;
+    total_salesmen: number;
+  };
+  topBySales: Array<{ name: string; amount: number }>;
+  topByConversion: Array<{ name: string; rate: number }>;
+  redFlagCounts: { high: number; medium: number; low: number };
+}): Promise<WeeklyInsight> {
+  const dataPrompt = buildWeeklyPrompt(input);
+
+  const systemPrompt = `Anda adalah asisten analitik sales. Buat laporan mingguan dengan format ringkas + detail.
+
+ATURAN PENTING:
+1. Keluarkan HANYA JSON yang valid dengan format yang persis seperti ditentukan
+2. Jangan menuduh siapa pun melakukan kecurangan atau pelanggaran
+3. Hindari kata "bendera" atau "red flag" dalam output
+4. Ringkas namun spesifik
+5. Fokus pada insight yang dapat ditindaklanjuti
+
+FORMAT OUTPUT (JSON ketat):
+{
+  "period": { "from": "YYYY-MM-DD", "to": "YYYY-MM-DD" },
+  "summary": {
+    "highlights": ["array string berisi 3-5 hal positif"],
+    "risks": ["array string berisi 3-5 risiko atau hal yang perlu perhatian"],
+    "actions": ["array string berisi 3-5 tindakan yang direkomendasikan"]
+  },
+  "detail": "paragraf singkat (3-5 kalimat) yang merangkum performa minggu ini",
+  "notes": "string tunggal untuk konteks tambahan"
+}`;
+
+  const userPrompt = `Analisis data mingguan berikut dan buat laporan sesuai format JSON:
+
+${dataPrompt}
+`;
+
+  try {
+    const response = await callDeepSeek([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ]);
+
+    const parsed = JSON.parse(response) as WeeklyInsight;
+
+    if (
+      !parsed.period ||
+      !parsed.summary ||
+      !Array.isArray(parsed.summary.highlights) ||
+      !Array.isArray(parsed.summary.risks) ||
+      !Array.isArray(parsed.summary.actions) ||
+      typeof parsed.detail !== "string" ||
+      typeof parsed.notes !== "string"
+    ) {
+      throw new Error("Invalid response structure");
+    }
+
+    return parsed;
+  } catch {
+    return generateWeeklyFallbackInsight(input);
+  }
+}
+
+export function generateWeeklyFallbackInsight(input: {
+  period: { from: string; to: string };
+  totals: {
+    total_visits: number;
+    total_sales_amount: number;
+    total_sales_qty: number;
+    avg_conversion_rate: number;
+    total_salesmen: number;
+  };
+  topBySales: Array<{ name: string; amount: number }>;
+  topByConversion: Array<{ name: string; rate: number }>;
+  redFlagCounts: { high: number; medium: number; low: number };
+}): WeeklyInsight {
+  const highlights: string[] = [];
+  const risks: string[] = [];
+  const actions: string[] = [];
+
+  highlights.push(
+    `Total ${input.totals.total_visits} kunjungan oleh ${input.totals.total_salesmen} sales selama periode ini`
+  );
+  highlights.push(
+    `Total penjualan ${formatCurrency(input.totals.total_sales_amount)} (${input.totals.total_sales_qty} unit)`
+  );
+  if (input.topBySales[0]) {
+    highlights.push(
+      `Penyumbang penjualan terbesar: ${input.topBySales[0].name} (${formatCurrency(input.topBySales[0].amount)})`
+    );
+  }
+
+  if (input.redFlagCounts.high > 0) {
+    risks.push(
+      `${input.redFlagCounts.high} pola risiko tingkat tinggi perlu ditinjau`
+    );
+  }
+  if (input.redFlagCounts.medium > 0) {
+    risks.push(
+      `${input.redFlagCounts.medium} pola risiko tingkat sedang membutuhkan perhatian`
+    );
+  }
+  if (input.totals.avg_conversion_rate < 0.3 && input.totals.total_visits > 0) {
+    risks.push(
+      `Rata-rata konversi rendah: ${formatPercentage(input.totals.avg_conversion_rate)}`
+    );
+  }
+  if (risks.length === 0) {
+    risks.push("Tidak ada risiko signifikan yang teridentifikasi minggu ini");
+  }
+
+  actions.push("Fokuskan follow-up pada outlet dengan konversi rendah");
+  if (input.topByConversion[0]) {
+    actions.push(
+      `Replikasi pola kerja ${input.topByConversion[0].name} ke sales lain`
+    );
+  }
+  actions.push("Evaluasi jadwal kunjungan agar lebih merata antar outlet");
+
+  return {
+    period: input.period,
+    summary: { highlights, risks, actions },
+    detail:
+      "Secara umum performa minggu ini stabil dengan kontribusi utama dari beberapa sales teratas. Konversi rata-rata masih perlu dijaga agar tetap konsisten. Perlu fokus pada outlet yang berkonversi rendah dan peningkatan pemerataan kunjungan.",
+    notes: "Laporan ini dihasilkan otomatis dari data mingguan.",
+  };
 }
 
 export function generateFallbackInsight(

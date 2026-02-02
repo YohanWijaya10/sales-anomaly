@@ -2,6 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from "recharts";
 
 interface SalesmanMetrics {
   salesman_id: string;
@@ -35,6 +43,17 @@ interface DailyInsight {
   highlights: string[];
   risks: string[];
   actions: string[];
+  notes: string;
+}
+
+interface WeeklyInsight {
+  period: { from: string; to: string };
+  summary: {
+    highlights: string[];
+    risks: string[];
+    actions: string[];
+  };
+  detail: string;
   notes: string;
 }
 
@@ -82,6 +101,9 @@ export default function DashboardPage() {
   const [insightMeta, setInsightMeta] = useState<{ from_llm: boolean; cached: boolean } | null>(
     null
   );
+  const [weeklyInsight, setWeeklyInsight] = useState<WeeklyInsight | null>(null);
+  const [weeklyLoading, setWeeklyLoading] = useState(true);
+  const [weeklyError, setWeeklyError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [insightLoading, setInsightLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,11 +152,45 @@ export default function DashboardPage() {
     }
   }
 
+  useEffect(() => {
+    async function fetchWeekly() {
+      setWeeklyLoading(true);
+      setWeeklyError(null);
+
+      try {
+        const response = await fetch(`/api/insights/weekly`);
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || "Gagal mengambil laporan mingguan");
+        }
+
+        setWeeklyInsight(result.data);
+      } catch (err) {
+        setWeeklyError(err instanceof Error ? err.message : "Terjadi kesalahan");
+      } finally {
+        setWeeklyLoading(false);
+      }
+    }
+
+    fetchWeekly();
+  }, []);
+
   const severityColors = {
     high: "bg-[#2a1111] text-[#ffb3b3] border-[#5a1d1d]",
     medium: "bg-[#2a240f] text-[#f2d27a] border-[#5a4a1d]",
     low: "bg-[#112329] text-[#8fd3ff] border-[#1e3f4a]",
   };
+
+  const pieColors = ["#c9f24b", "#8fd3ff", "#f2d27a", "#ff8b8b", "#b18cff", "#7ef0c1"];
+
+  const contributionData =
+    data?.metrics?.salesmen_metrics
+      ?.filter((m) => Number(m.total_sales_amount || 0) > 0)
+      .map((m) => ({
+        name: m.salesman_name,
+        value: Number(m.total_sales_amount || 0),
+      })) || [];
 
   return (
     <div className="min-h-screen bg-[#0b0b0b]">
@@ -304,6 +360,95 @@ export default function DashboardPage() {
               )}
             </div>
 
+            {/* Weekly Report */}
+            <div className="bg-[#151515] rounded-lg border border-[#222222] p-6">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-[#e6e6e6]">
+                    Laporan Mingguan
+                  </h2>
+                  {weeklyInsight?.period && (
+                    <p className="text-xs text-[#9aa0a6] mt-1">
+                      {weeklyInsight.period.from} – {weeklyInsight.period.to}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setWeeklyInsight(null);
+                    setWeeklyLoading(true);
+                    setWeeklyError(null);
+                    fetch(`/api/insights/weekly`)
+                      .then((r) => r.json().then((d) => ({ ok: r.ok, d })))
+                      .then(({ ok, d }) => {
+                        if (!ok) throw new Error(d.error || "Gagal mengambil laporan mingguan");
+                        setWeeklyInsight(d.data);
+                      })
+                      .catch((err) =>
+                        setWeeklyError(err instanceof Error ? err.message : "Terjadi kesalahan")
+                      )
+                      .finally(() => setWeeklyLoading(false));
+                  }}
+                  className="px-3 py-1.5 bg-[#1b1b1b] text-[#cfd4d8] rounded-md text-xs font-medium border border-[#2a2a2a] hover:bg-[#222222]"
+                >
+                  Refresh
+                </button>
+              </div>
+
+              {weeklyLoading ? (
+                <div className="flex items-center justify-center h-36">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#c9f24b]"></div>
+                </div>
+              ) : weeklyError ? (
+                <div className="bg-[#2a1111] border border-[#5a1d1d] rounded-lg p-4">
+                  <p className="text-[#ffb3b3]">{weeklyError}</p>
+                </div>
+              ) : weeklyInsight ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-[#142010] rounded-lg border border-[#22361a] p-4">
+                      <h3 className="font-medium text-[#c9f24b] mb-2">Sorotan</h3>
+                      <ul className="space-y-1 text-sm text-[#cde7a6]">
+                        {weeklyInsight.summary.highlights.map((h, i) => (
+                          <li key={i} className="flex items-start">
+                            <span className="mr-2">+</span>
+                            <span>{h}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="bg-[#2a1111] rounded-lg border border-[#5a1d1d] p-4">
+                      <h3 className="font-medium text-[#ffb3b3] mb-2">Risiko</h3>
+                      <ul className="space-y-1 text-sm text-[#f0b0b0]">
+                        {weeklyInsight.summary.risks.map((r, i) => (
+                          <li key={i} className="flex items-start">
+                            <span className="mr-2">!</span>
+                            <span>{r}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="bg-[#112329] rounded-lg border border-[#1e3f4a] p-4">
+                      <h3 className="font-medium text-[#8fd3ff] mb-2">Tindakan</h3>
+                      <ul className="space-y-1 text-sm text-[#b5e2ff]">
+                        {weeklyInsight.summary.actions.map((a, i) => (
+                          <li key={i} className="flex items-start">
+                            <span className="mr-2">-&gt;</span>
+                            <span>{a}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="bg-[#111111] border border-[#222222] rounded-lg p-4 text-sm text-[#cfd4d8]">
+                    {weeklyInsight.detail}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[#9aa0a6] text-sm">Belum ada laporan mingguan.</p>
+              )}
+            </div>
+
             {/* Red Flags */}
             {data.red_flags.length > 0 && (
               <div className="bg-[#151515] rounded-lg border border-[#222222] p-6">
@@ -420,6 +565,62 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            {/* Kontribusi Penjualan */}
+            <div className="bg-[#151515] rounded-lg border border-[#222222] p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-[#e6e6e6]">
+                  Kontribusi Penjualan per Sales
+                </h2>
+                <span className="text-xs text-[#9aa0a6]">
+                  Total: {formatCurrency(data.metrics.total_sales_amount)}
+                </span>
+              </div>
+              <div className="h-72">
+                {contributionData.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-[#9aa0a6]">
+                    Belum ada data penjualan
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={contributionData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={70}
+                        outerRadius={110}
+                        paddingAngle={2}
+                        stroke="#0b0b0b"
+                      >
+                        {contributionData.map((_, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={pieColors[index % pieColors.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          background: "#151515",
+                          border: "1px solid #222222",
+                          color: "#ffffff",
+                        }}
+                        formatter={(value: number) => formatCurrency(Number(value))}
+                        labelStyle={{ color: "#ffffff" }}
+                        itemStyle={{ color: "#ffffff" }}
+                      />
+                      <Legend
+                        wrapperStyle={{ color: "#ffffff" }}
+                        formatter={(value: string) => (
+                          <span className="text-white">{value}</span>
+                        )}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </div>
 

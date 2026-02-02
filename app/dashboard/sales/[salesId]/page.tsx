@@ -305,6 +305,9 @@ export default function SalesmanDetailPage() {
                       <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
                         Konversi
                       </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
+                        Detail
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-[#151515] divide-y divide-[#222222]">
@@ -355,6 +358,14 @@ export default function SalesmanDetailPage() {
                               >
                                 {formatPercentage(dm.conversion_rate)}
                               </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
+                              <Link
+                                href={`/dashboard/sales/${salesId}/${dm.date}`}
+                                className="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium border border-[#2a2a2a] bg-[#111111] text-[#c9f24b] hover:bg-[#1b1b1b]"
+                              >
+                                Detail
+                              </Link>
                             </td>
                           </tr>
                         );
