@@ -14,7 +14,25 @@ export type Salesman = {
   id: string;
   code: string;
   name: string;
+  leader_id: string | null;
+  region_id: string | null;
   active: boolean;
+  created_at: string;
+};
+
+export type Leader = {
+  id: string;
+  code: string;
+  name: string;
+  active: boolean;
+  created_at: string;
+};
+
+export type Region = {
+  id: string;
+  code: string;
+  name: string;
+  leader_id: string | null;
   created_at: string;
 };
 

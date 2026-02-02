@@ -31,11 +31,15 @@ export async function POST(request: NextRequest) {
     // Upsert salesman
     let salesmanId: string;
     const existingSalesman = await sql`
-      SELECT id FROM salesmen WHERE code = ${data.salesman_code} LIMIT 1
+      SELECT id, leader_id, region_id FROM salesmen WHERE code = ${data.salesman_code} LIMIT 1
     `;
 
+    let leaderId: string | null = null;
+    let regionId: string | null = null;
     if (existingSalesman.length > 0) {
       salesmanId = existingSalesman[0].id;
+      leaderId = existingSalesman[0].leader_id ?? null;
+      regionId = existingSalesman[0].region_id ?? null;
     } else {
       if (!data.salesman_name) {
         return NextResponse.json(
@@ -47,9 +51,11 @@ export async function POST(request: NextRequest) {
       const newSalesman = await sql`
         INSERT INTO salesmen (code, name)
         VALUES (${data.salesman_code}, ${data.salesman_name})
-        RETURNING id
+        RETURNING id, leader_id, region_id
       `;
       salesmanId = newSalesman[0].id;
+      leaderId = newSalesman[0].leader_id ?? null;
+      regionId = newSalesman[0].region_id ?? null;
     }
 
     // Upsert outlet
@@ -78,8 +84,17 @@ export async function POST(request: NextRequest) {
 
     // Insert checkin
     const checkin = await sql`
-      INSERT INTO checkins (salesman_id, outlet_id, ts, lat, lng, notes)
-      VALUES (${salesmanId}, ${outletId}, ${data.ts}, ${data.lat ?? null}, ${data.lng ?? null}, ${data.notes ?? null})
+      INSERT INTO checkins (salesman_id, leader_id, region_id, outlet_id, ts, lat, lng, notes)
+      VALUES (
+        ${salesmanId},
+        ${leaderId},
+        ${regionId},
+        ${outletId},
+        ${data.ts},
+        ${data.lat ?? null},
+        ${data.lng ?? null},
+        ${data.notes ?? null}
+      )
       RETURNING id
     `;
 

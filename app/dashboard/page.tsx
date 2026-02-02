@@ -57,6 +57,33 @@ interface WeeklyInsight {
   notes: string;
 }
 
+interface LeaderRegionData {
+  date: string;
+  leaders: Array<{
+    id: string;
+    code: string;
+    name: string;
+    visit_count: number;
+    unique_outlet_count: number;
+    total_sales_amount: number;
+    total_sales_qty: number;
+    outlet_with_sales_count: number;
+    conversion_rate: number;
+  }>;
+  regions: Array<{
+    id: string;
+    code: string;
+    name: string;
+    leader_id: string | null;
+    visit_count: number;
+    unique_outlet_count: number;
+    total_sales_amount: number;
+    total_sales_qty: number;
+    outlet_with_sales_count: number;
+    conversion_rate: number;
+  }>;
+}
+
 interface DailyData {
   metrics: {
     date: string;
@@ -104,6 +131,9 @@ export default function DashboardPage() {
   const [weeklyInsight, setWeeklyInsight] = useState<WeeklyInsight | null>(null);
   const [weeklyLoading, setWeeklyLoading] = useState(true);
   const [weeklyError, setWeeklyError] = useState<string | null>(null);
+  const [leaderRegion, setLeaderRegion] = useState<LeaderRegionData | null>(null);
+  const [leaderRegionLoading, setLeaderRegionLoading] = useState(false);
+  const [leaderRegionError, setLeaderRegionError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [insightLoading, setInsightLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -175,6 +205,26 @@ export default function DashboardPage() {
 
     fetchWeekly();
   }, []);
+
+  useEffect(() => {
+    async function fetchLeaderRegion() {
+      setLeaderRegionLoading(true);
+      setLeaderRegionError(null);
+      try {
+        const response = await fetch(`/api/analytics/leader-region?date=${selectedDate}`);
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || "Gagal mengambil data leader/region");
+        }
+        setLeaderRegion(result.data);
+      } catch (err) {
+        setLeaderRegionError(err instanceof Error ? err.message : "Terjadi kesalahan");
+      } finally {
+        setLeaderRegionLoading(false);
+      }
+    }
+    fetchLeaderRegion();
+  }, [selectedDate]);
 
   const severityColors = {
     high: "bg-[#2a1111] text-[#ffb3b3] border-[#5a1d1d]",
@@ -447,6 +497,163 @@ export default function DashboardPage() {
               ) : (
                 <p className="text-[#9aa0a6] text-sm">Belum ada laporan mingguan.</p>
               )}
+            </div>
+
+            {/* Leader / Region Summary */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-[#151515] rounded-lg border border-[#222222] overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#222222]">
+                  <h2 className="text-lg font-semibold text-[#e6e6e6]">
+                    Performa per Leader
+                  </h2>
+                </div>
+                {leaderRegionLoading ? (
+                  <div className="flex items-center justify-center h-40">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#c9f24b]"></div>
+                  </div>
+                ) : leaderRegionError ? (
+                  <div className="bg-[#2a1111] border border-[#5a1d1d] rounded-lg m-4 p-4">
+                    <p className="text-[#ffb3b3]">{leaderRegionError}</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-[#222222]">
+                      <thead className="bg-[#121212]">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
+                            Leader
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
+                            Kunjungan
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
+                            Penjualan
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
+                            Konversi
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-[#151515] divide-y divide-[#222222]">
+                        {(leaderRegion?.leaders || []).map((l) => (
+                          <tr key={l.id} className="hover:bg-[#1b1b1b]">
+                            <td className="px-6 py-4 text-sm text-[#e6e6e6]">
+                              <div className="font-medium">{l.name}</div>
+                              <div className="text-xs text-[#9aa0a6]">{l.code}</div>
+                            </td>
+                            <td className="px-6 py-4 text-right text-sm text-[#e6e6e6]">
+                              {l.visit_count}
+                            </td>
+                            <td className="px-6 py-4 text-right text-sm text-[#e6e6e6]">
+                              {formatCurrency(l.total_sales_amount)}
+                            </td>
+                            <td className="px-6 py-4 text-right text-sm">
+                              <span
+                                className={`${
+                                  l.conversion_rate >= 0.5
+                                    ? "text-[#c9f24b]"
+                                    : l.conversion_rate > 0
+                                    ? "text-[#f2d27a]"
+                                    : "text-[#ff8b8b]"
+                                }`}
+                              >
+                                {formatPercentage(l.conversion_rate)}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {(leaderRegion?.leaders || []).length === 0 && (
+                          <tr>
+                            <td
+                              colSpan={4}
+                              className="px-6 py-6 text-center text-sm text-[#9aa0a6]"
+                            >
+                              Belum ada data leader untuk tanggal ini
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-[#151515] rounded-lg border border-[#222222] overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#222222]">
+                  <h2 className="text-lg font-semibold text-[#e6e6e6]">
+                    Performa per Wilayah
+                  </h2>
+                </div>
+                {leaderRegionLoading ? (
+                  <div className="flex items-center justify-center h-40">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#c9f24b]"></div>
+                  </div>
+                ) : leaderRegionError ? (
+                  <div className="bg-[#2a1111] border border-[#5a1d1d] rounded-lg m-4 p-4">
+                    <p className="text-[#ffb3b3]">{leaderRegionError}</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-[#222222]">
+                      <thead className="bg-[#121212]">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
+                            Wilayah
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
+                            Kunjungan
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
+                            Penjualan
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
+                            Konversi
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-[#151515] divide-y divide-[#222222]">
+                        {(leaderRegion?.regions || []).map((r) => (
+                          <tr key={r.id} className="hover:bg-[#1b1b1b]">
+                            <td className="px-6 py-4 text-sm text-[#e6e6e6]">
+                              <div className="font-medium">{r.name}</div>
+                              <div className="text-xs text-[#9aa0a6]">{r.code}</div>
+                            </td>
+                            <td className="px-6 py-4 text-right text-sm text-[#e6e6e6]">
+                              {r.visit_count}
+                            </td>
+                            <td className="px-6 py-4 text-right text-sm text-[#e6e6e6]">
+                              {formatCurrency(r.total_sales_amount)}
+                            </td>
+                            <td className="px-6 py-4 text-right text-sm">
+                              <span
+                                className={`${
+                                  r.conversion_rate >= 0.5
+                                    ? "text-[#c9f24b]"
+                                    : r.conversion_rate > 0
+                                    ? "text-[#f2d27a]"
+                                    : "text-[#ff8b8b]"
+                                }`}
+                              >
+                                {formatPercentage(r.conversion_rate)}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {(leaderRegion?.regions || []).length === 0 && (
+                          <tr>
+                            <td
+                              colSpan={4}
+                              className="px-6 py-6 text-center text-sm text-[#9aa0a6]"
+                            >
+                              Belum ada data wilayah untuk tanggal ini
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Red Flags */}

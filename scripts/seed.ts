@@ -4,12 +4,164 @@ import { neon } from "@neondatabase/serverless";
 config({ path: ".env.local" });
 
 const SALESMEN = [
-  { id: "11111111-1111-1111-1111-111111111111", code: "SM001", name: "Andi Pratama" },
-  { id: "22222222-2222-2222-2222-222222222222", code: "SM002", name: "Budi Santoso" },
-  { id: "33333333-3333-3333-3333-333333333333", code: "SM003", name: "Citra Wulandari" },
-  { id: "44444444-4444-4444-4444-444444444444", code: "SM004", name: "Dewi Lestari" },
-  { id: "55555555-5555-5555-5555-555555555555", code: "SM005", name: "Eko Saputra" },
-  { id: "66666666-6666-6666-6666-666666666666", code: "SM006", name: "Farhan Maulana" },
+  {
+    id: "11111111-1111-1111-1111-111111111111",
+    code: "SM001",
+    name: "Andi Pratama",
+    leader_id: "aaaa1111-1111-1111-1111-111111111111",
+    region_id: "dddd1111-1111-1111-1111-111111111111",
+  },
+  {
+    id: "22222222-2222-2222-2222-222222222222",
+    code: "SM002",
+    name: "Budi Santoso",
+    leader_id: "aaaa1111-1111-1111-1111-111111111111",
+    region_id: "dddd1111-1111-1111-1111-111111111111",
+  },
+  {
+    id: "33333333-3333-3333-3333-333333333333",
+    code: "SM003",
+    name: "Citra Wulandari",
+    leader_id: "bbbb2222-2222-2222-2222-222222222222",
+    region_id: "eeee2222-2222-2222-2222-222222222222",
+  },
+  {
+    id: "44444444-4444-4444-4444-444444444444",
+    code: "SM004",
+    name: "Dewi Lestari",
+    leader_id: "bbbb2222-2222-2222-2222-222222222222",
+    region_id: "eeee2222-2222-2222-2222-222222222222",
+  },
+  {
+    id: "55555555-5555-5555-5555-555555555555",
+    code: "SM005",
+    name: "Eko Saputra",
+    leader_id: "cccc3333-3333-3333-3333-333333333333",
+    region_id: "ffff3333-3333-3333-3333-333333333333",
+  },
+  {
+    id: "66666666-6666-6666-6666-666666666666",
+    code: "SM006",
+    name: "Farhan Maulana",
+    leader_id: "cccc3333-3333-3333-3333-333333333333",
+    region_id: "ffff3333-3333-3333-3333-333333333333",
+  },
+  {
+    id: "77777777-7777-7777-7777-777777777777",
+    code: "SM007",
+    name: "Gita Permata",
+    leader_id: "dddd4444-4444-4444-4444-444444444444",
+    region_id: "99991111-1111-1111-1111-111111111111",
+  },
+  {
+    id: "88888888-8888-8888-8888-888888888888",
+    code: "SM008",
+    name: "Hafiz Ramadhan",
+    leader_id: "dddd4444-4444-4444-4444-444444444444",
+    region_id: "aaaa2222-2222-2222-2222-222222222222",
+  },
+  {
+    id: "99999999-9999-9999-9999-999999999999",
+    code: "SM009",
+    name: "Intan Sari",
+    leader_id: "eeee5555-5555-5555-5555-555555555555",
+    region_id: "bbbb3333-3333-3333-3333-333333333333",
+  },
+  {
+    id: "abababab-abab-abab-abab-abababababab",
+    code: "SM010",
+    name: "Joko Winarto",
+    leader_id: "eeee5555-5555-5555-5555-555555555555",
+    region_id: "cccc4444-4444-4444-4444-444444444444",
+  },
+  {
+    id: "cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcdcd",
+    code: "SM011",
+    name: "Kezia Putri",
+    leader_id: "aaaa1111-1111-1111-1111-111111111111",
+    region_id: "dddd1111-1111-1111-1111-111111111111",
+  },
+  {
+    id: "efefefef-efef-efef-efef-efefefefefef",
+    code: "SM012",
+    name: "Lukman Hakim",
+    leader_id: "bbbb2222-2222-2222-2222-222222222222",
+    region_id: "eeee2222-2222-2222-2222-222222222222",
+  },
+  {
+    id: "10101010-1010-1010-1010-101010101010",
+    code: "SM013",
+    name: "Mega Pratiwi",
+    leader_id: "cccc3333-3333-3333-3333-333333333333",
+    region_id: "ffff3333-3333-3333-3333-333333333333",
+  },
+  {
+    id: "12121212-1212-1212-1212-121212121212",
+    code: "SM014",
+    name: "Nanda Saputri",
+    leader_id: "dddd4444-4444-4444-4444-444444444444",
+    region_id: "99991111-1111-1111-1111-111111111111",
+  },
+  {
+    id: "13131313-1313-1313-1313-131313131313",
+    code: "SM015",
+    name: "Oki Firmansyah",
+    leader_id: "eeee5555-5555-5555-5555-555555555555",
+    region_id: "bbbb3333-3333-3333-3333-333333333333",
+  },
+];
+
+const LEADERS = [
+  { id: "aaaa1111-1111-1111-1111-111111111111", code: "LD001", name: "Raka Pramudya" },
+  { id: "bbbb2222-2222-2222-2222-222222222222", code: "LD002", name: "Sari Kartika" },
+  { id: "cccc3333-3333-3333-3333-333333333333", code: "LD003", name: "Hendra Wijaya" },
+  { id: "dddd4444-4444-4444-4444-444444444444", code: "LD004", name: "Maya Lestari" },
+  { id: "eeee5555-5555-5555-5555-555555555555", code: "LD005", name: "Rizal Aditya" },
+];
+
+const REGIONS = [
+  {
+    id: "dddd1111-1111-1111-1111-111111111111",
+    code: "RG-JKT",
+    name: "Jakarta",
+    leader_id: "aaaa1111-1111-1111-1111-111111111111",
+  },
+  {
+    id: "eeee2222-2222-2222-2222-222222222222",
+    code: "RG-BDG",
+    name: "Bandung",
+    leader_id: "bbbb2222-2222-2222-2222-222222222222",
+  },
+  {
+    id: "ffff3333-3333-3333-3333-333333333333",
+    code: "RG-SBY",
+    name: "Surabaya",
+    leader_id: "cccc3333-3333-3333-3333-333333333333",
+  },
+  {
+    id: "99991111-1111-1111-1111-111111111111",
+    code: "RG-MDN",
+    name: "Medan",
+    leader_id: "dddd4444-4444-4444-4444-444444444444",
+  },
+  {
+    id: "aaaa2222-2222-2222-2222-222222222222",
+    code: "RG-MLG",
+    name: "Malang",
+    leader_id: "dddd4444-4444-4444-4444-444444444444",
+  },
+  {
+    id: "bbbb3333-3333-3333-3333-333333333333",
+    code: "RG-MKS",
+    name: "Makassar",
+    leader_id: "eeee5555-5555-5555-5555-555555555555",
+  },
+  {
+    id: "cccc4444-4444-4444-4444-444444444444",
+    code: "RG-SMG",
+    name: "Semarang",
+    leader_id: "eeee5555-5555-5555-5555-555555555555",
+  },
 ];
 
 const OUTLETS = [
@@ -43,25 +195,40 @@ async function seed() {
 
   // Clear existing data
   console.log("1. Clearing existing data...");
-  await sql`TRUNCATE TABLE daily_insights_cache, sales, checkins, outlets, salesmen CASCADE`;
+  await sql`TRUNCATE TABLE daily_insights_cache, sales, checkins, outlets, salesmen, regions, leaders CASCADE`;
   console.log("   Done!\n");
 
+  // Insert leaders
+  console.log("2. Inserting leaders...");
+  for (const l of LEADERS) {
+    await sql`INSERT INTO leaders (id, code, name, active) VALUES (${l.id}, ${l.code}, ${l.name}, true)`;
+  }
+  console.log(`   ${LEADERS.length} leaders inserted!\n`);
+
+  // Insert regions
+  console.log("3. Inserting regions...");
+  for (const r of REGIONS) {
+    await sql`INSERT INTO regions (id, code, name, leader_id) VALUES (${r.id}, ${r.code}, ${r.name}, ${r.leader_id})`;
+  }
+  console.log(`   ${REGIONS.length} regions inserted!\n`);
+
   // Insert salesmen
-  console.log("2. Inserting salesmen...");
+  console.log("4. Inserting salesmen...");
   for (const s of SALESMEN) {
-    await sql`INSERT INTO salesmen (id, code, name, active) VALUES (${s.id}, ${s.code}, ${s.name}, true)`;
+    await sql`INSERT INTO salesmen (id, code, name, leader_id, region_id, active)
+      VALUES (${s.id}, ${s.code}, ${s.name}, ${s.leader_id}, ${s.region_id}, true)`;
   }
   console.log(`   ${SALESMEN.length} salesmen inserted!\n`);
 
   // Insert outlets
-  console.log("3. Inserting outlets...");
+  console.log("5. Inserting outlets...");
   for (const o of OUTLETS) {
     await sql`INSERT INTO outlets (id, code, name) VALUES (${o.id}, ${o.code}, ${o.name})`;
   }
   console.log(`   ${OUTLETS.length} outlets inserted!\n`);
 
   // Insert checkins and sales
-  console.log("4. Inserting checkins and sales...");
+  console.log("6. Inserting checkins and sales...");
 
   const alice = SALESMEN[0].id;
   const bob = SALESMEN[1].id;
@@ -80,7 +247,10 @@ async function seed() {
     const times = ["09:00", "10:30", "12:00", "14:00", "15:30"];
 
     for (let i = 0; i < 5; i++) {
-      await sql`INSERT INTO checkins (salesman_id, outlet_id, ts) VALUES (${alice}, ${outlets[i]}, ${getDate(day, times[i])})`;
+      const leaderId = SALESMEN[0].leader_id;
+      const regionId = SALESMEN[0].region_id;
+      await sql`INSERT INTO checkins (salesman_id, leader_id, region_id, outlet_id, ts)
+        VALUES (${alice}, ${leaderId}, ${regionId}, ${outlets[i]}, ${getDate(day, times[i])})`;
       checkinCount++;
     }
 
@@ -89,7 +259,10 @@ async function seed() {
       if (Math.random() > 0.3) {
         const amount = Math.floor(Math.random() * 2000000) + 500000;
         const qty = Math.floor(amount / 50000);
-        await sql`INSERT INTO sales (salesman_id, outlet_id, ts, amount, qty) VALUES (${alice}, ${outlets[i]}, ${getDate(day, times[i])}, ${amount}, ${qty})`;
+        const leaderId = SALESMEN[0].leader_id;
+        const regionId = SALESMEN[0].region_id;
+        await sql`INSERT INTO sales (salesman_id, leader_id, region_id, outlet_id, ts, amount, qty)
+          VALUES (${alice}, ${leaderId}, ${regionId}, ${outlets[i]}, ${getDate(day, times[i])}, ${amount}, ${qty})`;
         salesCount++;
       }
     }
@@ -101,7 +274,10 @@ async function seed() {
     const times = ["08:30", "09:30", "10:30", "13:00", "14:30", "16:00"];
 
     for (let i = 0; i < 6; i++) {
-      await sql`INSERT INTO checkins (salesman_id, outlet_id, ts) VALUES (${bob}, ${outlets[i]}, ${getDate(day, times[i])})`;
+      const leaderId = SALESMEN[1].leader_id;
+      const regionId = SALESMEN[1].region_id;
+      await sql`INSERT INTO checkins (salesman_id, leader_id, region_id, outlet_id, ts)
+        VALUES (${bob}, ${leaderId}, ${regionId}, ${outlets[i]}, ${getDate(day, times[i])})`;
       checkinCount++;
     }
     // NO SALES for Bob!
@@ -114,16 +290,26 @@ async function seed() {
     const outlet2 = OUTLETS[1].id;
     const times = ["09:00", "10:30", "12:00", "14:00", "16:00"];
 
-    await sql`INSERT INTO checkins (salesman_id, outlet_id, ts) VALUES (${charlie}, ${outlet1}, ${getDate(day, times[0])})`;
-    await sql`INSERT INTO checkins (salesman_id, outlet_id, ts) VALUES (${charlie}, ${outlet1}, ${getDate(day, times[1])})`;
-    await sql`INSERT INTO checkins (salesman_id, outlet_id, ts) VALUES (${charlie}, ${outlet2}, ${getDate(day, times[2])})`;
-    await sql`INSERT INTO checkins (salesman_id, outlet_id, ts) VALUES (${charlie}, ${outlet1}, ${getDate(day, times[3])})`;
-    await sql`INSERT INTO checkins (salesman_id, outlet_id, ts) VALUES (${charlie}, ${outlet2}, ${getDate(day, times[4])})`;
+    const leaderId = SALESMEN[2].leader_id;
+    const regionId = SALESMEN[2].region_id;
+    await sql`INSERT INTO checkins (salesman_id, leader_id, region_id, outlet_id, ts)
+      VALUES (${charlie}, ${leaderId}, ${regionId}, ${outlet1}, ${getDate(day, times[0])})`;
+    await sql`INSERT INTO checkins (salesman_id, leader_id, region_id, outlet_id, ts)
+      VALUES (${charlie}, ${leaderId}, ${regionId}, ${outlet1}, ${getDate(day, times[1])})`;
+    await sql`INSERT INTO checkins (salesman_id, leader_id, region_id, outlet_id, ts)
+      VALUES (${charlie}, ${leaderId}, ${regionId}, ${outlet2}, ${getDate(day, times[2])})`;
+    await sql`INSERT INTO checkins (salesman_id, leader_id, region_id, outlet_id, ts)
+      VALUES (${charlie}, ${leaderId}, ${regionId}, ${outlet1}, ${getDate(day, times[3])})`;
+    await sql`INSERT INTO checkins (salesman_id, leader_id, region_id, outlet_id, ts)
+      VALUES (${charlie}, ${leaderId}, ${regionId}, ${outlet2}, ${getDate(day, times[4])})`;
     checkinCount += 5;
 
     // Charlie makes 1 small sale per day
     const amount = Math.floor(Math.random() * 200000) + 300000;
-    await sql`INSERT INTO sales (salesman_id, outlet_id, ts, amount, qty) VALUES (${charlie}, ${outlet1}, ${getDate(day, "14:30")}, ${amount}, ${Math.floor(amount / 50000)})`;
+    const cLeaderId = SALESMEN[2].leader_id;
+    const cRegionId = SALESMEN[2].region_id;
+    await sql`INSERT INTO sales (salesman_id, leader_id, region_id, outlet_id, ts, amount, qty)
+      VALUES (${charlie}, ${cLeaderId}, ${cRegionId}, ${outlet1}, ${getDate(day, "14:30")}, ${amount}, ${Math.floor(amount / 50000)})`;
     salesCount++;
   }
 
@@ -133,7 +319,10 @@ async function seed() {
     const times = ["08:45", "09:45", "11:00", "13:00", "14:30", "16:00"];
 
     for (let i = 0; i < 6; i++) {
-      await sql`INSERT INTO checkins (salesman_id, outlet_id, ts) VALUES (${dewi}, ${outlets[i]}, ${getDate(day, times[i])})`;
+      const leaderId = SALESMEN[3].leader_id;
+      const regionId = SALESMEN[3].region_id;
+      await sql`INSERT INTO checkins (salesman_id, leader_id, region_id, outlet_id, ts)
+        VALUES (${dewi}, ${leaderId}, ${regionId}, ${outlets[i]}, ${getDate(day, times[i])})`;
       checkinCount++;
     }
 
@@ -141,7 +330,10 @@ async function seed() {
       if (Math.random() > 0.1) {
         const amount = Math.floor(Math.random() * 3500000) + 800000;
         const qty = Math.floor(amount / 50000);
-        await sql`INSERT INTO sales (salesman_id, outlet_id, ts, amount, qty) VALUES (${dewi}, ${outlets[i]}, ${getDate(day, times[i])}, ${amount}, ${qty})`;
+        const leaderId = SALESMEN[3].leader_id;
+        const regionId = SALESMEN[3].region_id;
+        await sql`INSERT INTO sales (salesman_id, leader_id, region_id, outlet_id, ts, amount, qty)
+          VALUES (${dewi}, ${leaderId}, ${regionId}, ${outlets[i]}, ${getDate(day, times[i])}, ${amount}, ${qty})`;
         salesCount++;
       }
     }
@@ -153,14 +345,20 @@ async function seed() {
     const times = ["10:00", "13:30", "15:45"];
 
     for (let i = 0; i < 3; i++) {
-      await sql`INSERT INTO checkins (salesman_id, outlet_id, ts) VALUES (${eko}, ${outlets[i]}, ${getDate(day, times[i])})`;
+      const leaderId = SALESMEN[4].leader_id;
+      const regionId = SALESMEN[4].region_id;
+      await sql`INSERT INTO checkins (salesman_id, leader_id, region_id, outlet_id, ts)
+        VALUES (${eko}, ${leaderId}, ${regionId}, ${outlets[i]}, ${getDate(day, times[i])})`;
       checkinCount++;
     }
 
     for (let i = 0; i < 2; i++) {
       const amount = Math.floor(Math.random() * 6000000) + 2000000;
       const qty = Math.floor(amount / 75000);
-      await sql`INSERT INTO sales (salesman_id, outlet_id, ts, amount, qty) VALUES (${eko}, ${outlets[i]}, ${getDate(day, times[i])}, ${amount}, ${qty})`;
+      const leaderId = SALESMEN[4].leader_id;
+      const regionId = SALESMEN[4].region_id;
+      await sql`INSERT INTO sales (salesman_id, leader_id, region_id, outlet_id, ts, amount, qty)
+        VALUES (${eko}, ${leaderId}, ${regionId}, ${outlets[i]}, ${getDate(day, times[i])}, ${amount}, ${qty})`;
       salesCount++;
     }
   }
@@ -172,7 +370,10 @@ async function seed() {
     const outlets = Array.from({ length: visitCount }, (_, i) => OUTLETS[(day * 3 + i) % outletCount].id);
 
     for (let i = 0; i < visitCount; i++) {
-      await sql`INSERT INTO checkins (salesman_id, outlet_id, ts) VALUES (${farhan}, ${outlets[i]}, ${getDate(day, times[i])})`;
+      const leaderId = SALESMEN[5].leader_id;
+      const regionId = SALESMEN[5].region_id;
+      await sql`INSERT INTO checkins (salesman_id, leader_id, region_id, outlet_id, ts)
+        VALUES (${farhan}, ${leaderId}, ${regionId}, ${outlets[i]}, ${getDate(day, times[i])})`;
       checkinCount++;
     }
 
@@ -180,8 +381,40 @@ async function seed() {
       if (Math.random() > 0.6) {
         const amount = Math.floor(Math.random() * 1500000) + 300000;
         const qty = Math.floor(amount / 50000);
-        await sql`INSERT INTO sales (salesman_id, outlet_id, ts, amount, qty) VALUES (${farhan}, ${outlets[i]}, ${getDate(day, times[i])}, ${amount}, ${qty})`;
+        const leaderId = SALESMEN[5].leader_id;
+        const regionId = SALESMEN[5].region_id;
+        await sql`INSERT INTO sales (salesman_id, leader_id, region_id, outlet_id, ts, amount, qty)
+          VALUES (${farhan}, ${leaderId}, ${regionId}, ${outlets[i]}, ${getDate(day, times[i])}, ${amount}, ${qty})`;
         salesCount++;
+      }
+    }
+  }
+
+  // OTHER SALESMEN - Pola normal (4-5 kunjungan/hari, 1-3 transaksi)
+  for (let sIndex = 6; sIndex < SALESMEN.length; sIndex++) {
+    const salesman = SALESMEN[sIndex];
+    for (let day = 6; day >= 0; day--) {
+      const visitCount = 4 + (day % 2);
+      const times = ["09:10", "10:40", "12:10", "14:05", "15:35"];
+      const outlets = Array.from(
+        { length: visitCount },
+        (_, i) => OUTLETS[(day * 4 + sIndex + i) % outletCount].id
+      );
+
+      for (let i = 0; i < visitCount; i++) {
+        await sql`INSERT INTO checkins (salesman_id, leader_id, region_id, outlet_id, ts)
+          VALUES (${salesman.id}, ${salesman.leader_id}, ${salesman.region_id}, ${outlets[i]}, ${getDate(day, times[i])})`;
+        checkinCount++;
+      }
+
+      for (let i = 0; i < visitCount; i++) {
+        if (Math.random() > 0.4) {
+          const amount = Math.floor(Math.random() * 2200000) + 400000;
+          const qty = Math.floor(amount / 50000);
+          await sql`INSERT INTO sales (salesman_id, leader_id, region_id, outlet_id, ts, amount, qty)
+            VALUES (${salesman.id}, ${salesman.leader_id}, ${salesman.region_id}, ${outlets[i]}, ${getDate(day, times[i])}, ${amount}, ${qty})`;
+          salesCount++;
+        }
       }
     }
   }
