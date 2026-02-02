@@ -38,14 +38,6 @@ interface SalesmanRedFlags {
   red_flags: RedFlag[];
 }
 
-interface DailyInsight {
-  date: string;
-  highlights: string[];
-  risks: string[];
-  actions: string[];
-  notes: string;
-}
-
 interface WeeklyInsight {
   period: { from: string; to: string };
   summary: {
@@ -124,10 +116,6 @@ function getTodayDate(): string {
 export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
   const [data, setData] = useState<DailyData | null>(null);
-  const [insight, setInsight] = useState<DailyInsight | null>(null);
-  const [insightMeta, setInsightMeta] = useState<{ from_llm: boolean; cached: boolean } | null>(
-    null
-  );
   const [weeklyInsight, setWeeklyInsight] = useState<WeeklyInsight | null>(null);
   const [weeklyLoading, setWeeklyLoading] = useState(true);
   const [weeklyError, setWeeklyError] = useState<string | null>(null);
@@ -135,7 +123,6 @@ export default function DashboardPage() {
   const [leaderRegionLoading, setLeaderRegionLoading] = useState(false);
   const [leaderRegionError, setLeaderRegionError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [insightLoading, setInsightLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -161,26 +148,6 @@ export default function DashboardPage() {
 
     fetchData();
   }, [selectedDate]);
-
-  async function fetchInsight() {
-    setInsightLoading(true);
-
-    try {
-      const response = await fetch(`/api/insights/daily?date=${selectedDate}`);
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Gagal mengambil insight");
-      }
-
-      setInsight(result.data);
-      setInsightMeta({ from_llm: Boolean(result.from_llm), cached: Boolean(result.cached) });
-    } catch (err) {
-      console.error("Gagal mengambil insight:", err);
-    } finally {
-      setInsightLoading(false);
-    }
-  }
 
   useEffect(() => {
     async function fetchWeekly() {
@@ -316,98 +283,6 @@ export default function DashboardPage() {
                   {data.red_flags.length} sales terindikasi
                 </p>
               </div>
-            </div>
-
-            {/* AI Insights Section */}
-            <div className="bg-[#151515] rounded-lg border border-[#222222] p-6">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-semibold text-[#e6e6e6]">Insight AI</h2>
-                  <div className="flex items-center gap-3 text-xs text-[#9aa0a6]">
-                    <span className="flex items-center gap-2">
-                      <span className="inline-block h-2 w-2 rounded-full bg-[#c9f24b]"></span>
-                      AI
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span className="inline-block h-2 w-2 rounded-full bg-[#f2d27a]"></span>
-                      Template
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span className="inline-block h-2 w-2 rounded-full bg-[#ff8b8b]"></span>
-                      Cache
-                    </span>
-                    {insightMeta && (
-                      <span
-                        className={`inline-block h-2 w-2 rounded-full ${
-                          insightMeta.cached
-                            ? "bg-[#ff8b8b]"
-                            : insightMeta.from_llm
-                            ? "bg-[#c9f24b]"
-                            : "bg-[#f2d27a]"
-                        }`}
-                        title={
-                          insightMeta.cached
-                            ? "Cache"
-                            : insightMeta.from_llm
-                            ? "AI (DeepSeek)"
-                            : "Template"
-                        }
-                      ></span>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={fetchInsight}
-                  disabled={insightLoading}
-                  className="px-4 py-2 bg-[#c9f24b] text-[#1a1a1a] rounded-md text-sm font-medium hover:bg-[#b6e13a] disabled:bg-[#3a3a3a] disabled:text-[#9aa0a6] disabled:cursor-not-allowed"
-                >
-                  {insightLoading ? "Membuat..." : "Buat Insight"}
-                </button>
-              </div>
-
-              {insight ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-[#142010] rounded-lg border border-[#22361a] p-4">
-                    <h3 className="font-medium text-[#c9f24b] mb-2">Sorotan</h3>
-                    <ul className="space-y-1 text-sm text-[#cde7a6]">
-                      {insight.highlights.map((h, i) => (
-                        <li key={i} className="flex items-start">
-                          <span className="mr-2">+</span>
-                          <span>{h}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="bg-[#2a1111] rounded-lg border border-[#5a1d1d] p-4">
-                    <h3 className="font-medium text-[#ffb3b3] mb-2">Risiko</h3>
-                    <ul className="space-y-1 text-sm text-[#f0b0b0]">
-                      {insight.risks.map((r, i) => (
-                        <li key={i} className="flex items-start">
-                          <span className="mr-2">!</span>
-                          <span>{r}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="bg-[#112329] rounded-lg border border-[#1e3f4a] p-4">
-                    <h3 className="font-medium text-[#8fd3ff] mb-2">Tindakan</h3>
-                    <ul className="space-y-1 text-sm text-[#b5e2ff]">
-                      {insight.actions.map((a, i) => (
-                        <li key={i} className="flex items-start">
-                          <span className="mr-2">-&gt;</span>
-                          <span>{a}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-[#9aa0a6] text-sm">
-                  Klik &quot;Buat Insight&quot; untuk mendapatkan analisis AI atas data hari ini.
-                </p>
-              )}
             </div>
 
             {/* Weekly Report */}

@@ -113,11 +113,13 @@ async function migrate() {
     const outlets = await sql`SELECT COUNT(*) as count FROM outlets`;
     const checkins = await sql`SELECT COUNT(*) as count FROM checkins`;
     const sales = await sql`SELECT COUNT(*) as count FROM sales`;
+    const weeklyInsights = await sql`SELECT COUNT(*) as count FROM weekly_insights_cache`;
 
     console.log(`   - Salesmen: ${salesmen[0].count}`);
     console.log(`   - Outlets: ${outlets[0].count}`);
     console.log(`   - Checkins: ${checkins[0].count}`);
     console.log(`   - Sales: ${sales[0].count}`);
+    console.log(`   - Weekly Insights: ${weeklyInsights[0].count}`);
     console.log("\nMigration complete!");
   } catch (error) {
     console.error("   Verification failed - tables may not exist");

@@ -83,6 +83,16 @@ CREATE TABLE IF NOT EXISTS daily_insights_cache (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Weekly insights cache table
+CREATE TABLE IF NOT EXISTS weekly_insights_cache (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  period_from DATE NOT NULL,
+  period_to DATE NOT NULL,
+  payload_json JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (period_from, period_to)
+);
+
 -- ============================================
 -- INDEXES
 -- ============================================
@@ -121,3 +131,4 @@ CREATE INDEX IF NOT EXISTS idx_sales_region_id ON sales(region_id);
 
 -- Daily insights cache index
 CREATE INDEX IF NOT EXISTS idx_daily_insights_cache_date ON daily_insights_cache(date);
+CREATE INDEX IF NOT EXISTS idx_weekly_insights_cache_period ON weekly_insights_cache(period_from, period_to);

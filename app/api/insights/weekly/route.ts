@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDatesBetween } from "@/lib/utils/date";
 import { computeDailyMetricsForDate } from "@/lib/analytics/computeDailyMetrics";
 import { getAllRedFlagsForDate } from "@/lib/analytics/redFlags";
+import { getDb } from "@/lib/db/neon";
 import {
   generateWeeklyInsight,
   generateWeeklyFallbackInsight,
@@ -19,6 +20,24 @@ function getLast7DaysRange(): { from: string; to: string } {
 export async function GET(_request: NextRequest) {
   try {
     const { from, to } = getLast7DaysRange();
+    const sql = getDb();
+
+    const cached = await sql`
+      SELECT payload_json FROM weekly_insights_cache
+      WHERE period_from = ${from} AND period_to = ${to}
+      LIMIT 1
+    `;
+
+    if (cached.length > 0 && cached[0].payload_json) {
+      return NextResponse.json({
+        success: true,
+        cached: true,
+        from_llm: false,
+        data: cached[0].payload_json,
+        meta: { period: { from, to } },
+      });
+    }
+
     const dates = getDatesBetween(from, to);
 
     const perDay = await Promise.all(
@@ -125,6 +144,17 @@ export async function GET(_request: NextRequest) {
       fromLLM = true;
     } else {
       insight = generateWeeklyFallbackInsight(input);
+    }
+
+    try {
+      await sql`
+        INSERT INTO weekly_insights_cache (period_from, period_to, payload_json)
+        VALUES (${from}, ${to}, ${JSON.stringify(insight)})
+        ON CONFLICT (period_from, period_to)
+        DO UPDATE SET payload_json = ${JSON.stringify(insight)}
+      `;
+    } catch (cacheError) {
+      console.error("Gagal menyimpan cache weekly insight:", cacheError);
     }
 
     return NextResponse.json({
