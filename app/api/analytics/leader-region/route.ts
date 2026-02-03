@@ -4,17 +4,33 @@ import { getDb } from "@/lib/db/neon";
 import { getDateRange, isValidDateString } from "@/lib/utils/date";
 
 const QuerySchema = z.object({
-  date: z.string().refine(isValidDateString, {
-    message: "Format tanggal tidak valid. Gunakan YYYY-MM-DD",
-  }),
+  date: z
+    .string()
+    .optional()
+    .refine((val) => (val ? isValidDateString(val) : true), {
+      message: "Format tanggal tidak valid. Gunakan YYYY-MM-DD",
+    }),
+  range: z.enum(["7d", "30d"]).optional(),
 });
+
+function formatDate(date: Date): string {
+  return date.toISOString().split("T")[0];
+}
+
+function getRollingRange(days: number): { from: string; to: string } {
+  const to = new Date();
+  const from = new Date();
+  from.setDate(from.getDate() - (days - 1));
+  return { from: formatDate(from), to: formatDate(to) };
+}
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const date = searchParams.get("date");
+    const date = searchParams.get("date") ?? undefined;
+    const range = searchParams.get("range") ?? undefined;
 
-    const validation = QuerySchema.safeParse({ date });
+    const validation = QuerySchema.safeParse({ date, range });
     if (!validation.success) {
       return NextResponse.json(
         { error: "Parameter query tidak valid", details: validation.error.issues },
@@ -22,7 +38,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { startOfDay, endOfDay } = getDateRange(validation.data.date);
+    let startOfDay: string;
+    let endOfDay: string;
+    let period: { from: string; to: string } | null = null;
+
+    if (validation.data.range) {
+      const days = validation.data.range === "7d" ? 7 : 30;
+      period = getRollingRange(days);
+      startOfDay = `${period.from}T00:00:00.000Z`;
+      endOfDay = `${period.to}T23:59:59.999Z`;
+    } else if (validation.data.date) {
+      const rangeForDate = getDateRange(validation.data.date);
+      startOfDay = rangeForDate.startOfDay;
+      endOfDay = rangeForDate.endOfDay;
+    } else {
+      period = getRollingRange(7);
+      startOfDay = `${period.from}T00:00:00.000Z`;
+      endOfDay = `${period.to}T23:59:59.999Z`;
+    }
     const sql = getDb();
 
     const leaderRows = await sql`
@@ -126,7 +159,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        date: validation.data.date,
+        date: validation.data.date ?? null,
+        period,
         leaders,
         regions,
       },

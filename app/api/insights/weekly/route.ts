@@ -26,10 +26,117 @@ function getLastCompleteWeekRange(): { from: string; to: string } {
   return { from: fromStr, to: toStr };
 }
 
+function shiftDate(dateStr: string, days: number): string {
+  const d = new Date(`${dateStr}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().split("T")[0];
+}
+
+async function getLeaderRegionSummary(
+  from: string,
+  to: string,
+  sql: ReturnType<typeof getDb>
+) {
+  const startOfRange = `${from}T00:00:00.000Z`;
+  const endOfRange = `${to}T23:59:59.999Z`;
+
+  const leaderRows = await sql`
+    SELECT
+      l.id,
+      l.code,
+      l.name,
+      COALESCE(cv.visit_count, 0) as visit_count,
+      COALESCE(sa.total_sales_amount, 0) as total_sales_amount,
+      COALESCE(sa.total_sales_qty, 0) as total_sales_qty,
+      COALESCE(sa.outlet_with_sales_count, 0) as outlet_with_sales_count
+    FROM leaders l
+    LEFT JOIN (
+      SELECT leader_id,
+             COUNT(*) as visit_count
+      FROM checkins
+      WHERE ts >= ${startOfRange}::timestamptz
+        AND ts <= ${endOfRange}::timestamptz
+      GROUP BY leader_id
+    ) cv ON cv.leader_id = l.id
+    LEFT JOIN (
+      SELECT leader_id,
+             COALESCE(SUM(amount), 0) as total_sales_amount,
+             COALESCE(SUM(qty), 0) as total_sales_qty,
+             COUNT(DISTINCT outlet_id) FILTER (WHERE amount > 0) as outlet_with_sales_count
+      FROM sales
+      WHERE ts >= ${startOfRange}::timestamptz
+        AND ts <= ${endOfRange}::timestamptz
+      GROUP BY leader_id
+    ) sa ON sa.leader_id = l.id
+  `;
+
+  const regionRows = await sql`
+    SELECT
+      r.id,
+      r.code,
+      r.name,
+      COALESCE(cv.visit_count, 0) as visit_count,
+      COALESCE(sa.total_sales_amount, 0) as total_sales_amount,
+      COALESCE(sa.total_sales_qty, 0) as total_sales_qty,
+      COALESCE(sa.outlet_with_sales_count, 0) as outlet_with_sales_count
+    FROM regions r
+    LEFT JOIN (
+      SELECT region_id,
+             COUNT(*) as visit_count
+      FROM checkins
+      WHERE ts >= ${startOfRange}::timestamptz
+        AND ts <= ${endOfRange}::timestamptz
+      GROUP BY region_id
+    ) cv ON cv.region_id = r.id
+    LEFT JOIN (
+      SELECT region_id,
+             COALESCE(SUM(amount), 0) as total_sales_amount,
+             COALESCE(SUM(qty), 0) as total_sales_qty,
+             COUNT(DISTINCT outlet_id) FILTER (WHERE amount > 0) as outlet_with_sales_count
+      FROM sales
+      WHERE ts >= ${startOfRange}::timestamptz
+        AND ts <= ${endOfRange}::timestamptz
+      GROUP BY region_id
+    ) sa ON sa.region_id = r.id
+  `;
+
+  const leaders = leaderRows.map((l: any) => ({
+    id: l.id,
+    code: l.code,
+    name: l.name,
+    visit_count: Number(l.visit_count || 0),
+    total_sales_amount: Number(l.total_sales_amount || 0),
+    total_sales_qty: Number(l.total_sales_qty || 0),
+    outlet_with_sales_count: Number(l.outlet_with_sales_count || 0),
+    conversion_rate:
+      Number(l.visit_count || 0) > 0
+        ? Number(l.outlet_with_sales_count || 0) / Number(l.visit_count || 0)
+        : 0,
+  }));
+
+  const regions = regionRows.map((r: any) => ({
+    id: r.id,
+    code: r.code,
+    name: r.name,
+    visit_count: Number(r.visit_count || 0),
+    total_sales_amount: Number(r.total_sales_amount || 0),
+    total_sales_qty: Number(r.total_sales_qty || 0),
+    outlet_with_sales_count: Number(r.outlet_with_sales_count || 0),
+    conversion_rate:
+      Number(r.visit_count || 0) > 0
+        ? Number(r.outlet_with_sales_count || 0) / Number(r.visit_count || 0)
+        : 0,
+  }));
+
+  return { leaders, regions };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const refresh = request.nextUrl.searchParams.get("refresh") === "1";
     const { from, to } = getLastCompleteWeekRange();
+    const prevFrom = shiftDate(from, -7);
+    const prevTo = shiftDate(to, -7);
     const sql = getDb();
 
     const cached = await sql`
@@ -44,12 +151,20 @@ export async function GET(request: NextRequest) {
         : null;
 
     const dates = getDatesBetween(from, to);
+    const prevDates = getDatesBetween(prevFrom, prevTo);
 
     const perDay = await Promise.all(
       dates.map(async (date) => {
         const metrics = await computeDailyMetricsForDate(date);
         const redFlags = await getAllRedFlagsForDate(date, metrics.salesmen_metrics);
         return { date, metrics, redFlags };
+      })
+    );
+
+    const perDayPrev = await Promise.all(
+      prevDates.map(async (date) => {
+        const metrics = await computeDailyMetricsForDate(date);
+        return { date, metrics };
       })
     );
 
@@ -148,6 +263,29 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    let prevTotalVisits = 0;
+    let prevTotalSalesAmount = 0;
+    let prevTotalSalesQty = 0;
+    let prevTotalSalesmen = 0;
+    let prevConversionRateSum = 0;
+    let prevConversionRateCount = 0;
+
+    for (const day of perDayPrev) {
+      prevTotalVisits += day.metrics.total_visits;
+      prevTotalSalesAmount += day.metrics.total_sales_amount;
+      prevTotalSalesQty += day.metrics.total_sales_qty;
+      prevTotalSalesmen = Math.max(prevTotalSalesmen, day.metrics.total_salesmen);
+      for (const m of day.metrics.salesmen_metrics) {
+        if (m.visit_count > 0) {
+          prevConversionRateSum += m.conversion_rate;
+          prevConversionRateCount++;
+        }
+      }
+    }
+
+    const prevAvgConversionRate =
+      prevConversionRateCount > 0 ? prevConversionRateSum / prevConversionRateCount : 0;
+
     const severityWeight = { high: 3, medium: 2, low: 1 };
     const issues = Array.from(issuesMap.values())
       .map((entry) => ({
@@ -208,6 +346,54 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.rate - a.rate)
       .slice(0, 3);
 
+    const { leaders, regions } = await getLeaderRegionSummary(from, to, sql);
+    const topLeadersBySales = leaders
+      .slice()
+      .sort((a, b) => b.total_sales_amount - a.total_sales_amount)
+      .slice(0, 2)
+      .map((l) => ({ name: l.name, amount: l.total_sales_amount }));
+
+    const topSalesmanBySales = topBySales[0]
+      ? { name: topBySales[0].name, amount: topBySales[0].amount }
+      : null;
+
+    const topRegionByVisits = regions
+      .slice()
+      .sort((a, b) => b.visit_count - a.visit_count)[0] || null;
+
+    const lowConversionRegionCandidate =
+      regions
+        .filter((r) => r.visit_count > 0)
+        .slice()
+        .sort((a, b) => a.conversion_rate - b.conversion_rate)[0] || null;
+
+    const lowConversionRegion =
+      lowConversionRegionCandidate &&
+      lowConversionRegionCandidate.conversion_rate < 0.4
+        ? lowConversionRegionCandidate
+        : null;
+
+    const poorPerformers = issues
+      .map((issue) => {
+        const totals = salesmenMap.get(issue.salesman_id);
+        const totalVisits = totals?.total_visits ?? 0;
+        const totalSalesAmount = totals?.total_sales_amount ?? 0;
+        const conversionRate = totalVisits > 0 ? totalSalesAmount / totalVisits : 0;
+        return {
+          name: issue.salesman_name,
+          count: issue.total_flags,
+          visit_count_week: totalVisits,
+          total_sales_amount: totalSalesAmount,
+          conversion_rate: conversionRate,
+        };
+      })
+      .filter(
+        (p) =>
+          p.visit_count_week > 0 &&
+          (p.total_sales_amount === 0 || p.conversion_rate < 0.3)
+      )
+      .slice(0, 3);
+
     const input = {
       period: { from, to },
       totals: {
@@ -217,8 +403,28 @@ export async function GET(request: NextRequest) {
         avg_conversion_rate: avgConversionRate,
         total_salesmen: totalSalesmen,
       },
+      prev_totals: {
+        total_visits: prevTotalVisits,
+        total_sales_amount: prevTotalSalesAmount,
+        total_sales_qty: prevTotalSalesQty,
+        avg_conversion_rate: prevAvgConversionRate,
+        total_salesmen: prevTotalSalesmen,
+        period: { from: prevFrom, to: prevTo },
+      },
       topBySales,
       topByConversion,
+      topLeadersBySales,
+      topSalesmanBySales,
+      topRegionByVisits,
+      lowConversionRegion: lowConversionRegion
+        ? {
+            name: lowConversionRegion.name,
+            visit_count: lowConversionRegion.visit_count,
+            outlet_with_sales_count: lowConversionRegion.outlet_with_sales_count,
+            conversion_rate: lowConversionRegion.conversion_rate,
+          }
+        : null,
+      poorPerformers,
       redFlagCounts,
     };
 

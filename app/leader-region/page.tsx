@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 
 interface LeaderRegionData {
-  date: string;
+  date: string | null;
+  period: { from: string; to: string } | null;
   leaders: Array<{
     id: string;
     code: string;
@@ -42,12 +43,8 @@ function formatPercentage(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-function getTodayDate(): string {
-  return new Date().toISOString().split("T")[0];
-}
-
 export default function LeaderRegionPage() {
-  const [selectedDate, setSelectedDate] = useState(getTodayDate());
+  const [range, setRange] = useState<"7d" | "30d">("7d");
   const [data, setData] = useState<LeaderRegionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +54,7 @@ export default function LeaderRegionPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/analytics/leader-region?date=${selectedDate}`);
+        const response = await fetch(`/api/analytics/leader-region?range=${range}`);
         const result = await response.json();
         if (!response.ok) {
           throw new Error(result.error || "Gagal mengambil data");
@@ -70,7 +67,7 @@ export default function LeaderRegionPage() {
       }
     }
     fetchData();
-  }, [selectedDate]);
+  }, [range]);
 
   return (
     <div className="min-h-screen bg-[#0b0b0b]">
@@ -81,16 +78,23 @@ export default function LeaderRegionPage() {
               Leader & Region
             </h1>
             <div className="flex items-center gap-4">
-              <label htmlFor="date" className="text-sm font-medium text-[#bfc5c9]">
-                Tanggal:
+              <label htmlFor="range" className="text-sm font-medium text-[#bfc5c9]">
+                Range:
               </label>
-              <input
-                type="date"
-                id="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
+              <select
+                id="range"
+                value={range}
+                onChange={(e) => setRange(e.target.value as "7d" | "30d")}
                 className="border border-[#2a2a2a] bg-[#111111] text-[#e6e6e6] rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#c9f24b] focus:border-[#c9f24b]"
-              />
+              >
+                <option value="7d">7 hari</option>
+                <option value="30d">30 hari</option>
+              </select>
+              {data?.period && (
+                <span className="text-xs text-[#9aa0a6]">
+                  {data.period.from} – {data.period.to}
+                </span>
+              )}
             </div>
           </div>
         </div>

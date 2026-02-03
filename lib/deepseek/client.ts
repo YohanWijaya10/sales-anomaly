@@ -229,8 +229,32 @@ function buildWeeklyPrompt(input: {
     avg_conversion_rate: number;
     total_salesmen: number;
   };
+  prev_totals: {
+    total_visits: number;
+    total_sales_amount: number;
+    total_sales_qty: number;
+    avg_conversion_rate: number;
+    total_salesmen: number;
+    period: { from: string; to: string };
+  };
   topBySales: Array<{ name: string; amount: number }>;
   topByConversion: Array<{ name: string; rate: number }>;
+  topLeadersBySales: Array<{ name: string; amount: number }>;
+  topSalesmanBySales: { name: string; amount: number } | null;
+  topRegionByVisits: { name: string; visit_count: number } | null;
+  lowConversionRegion: {
+    name: string;
+    visit_count: number;
+    outlet_with_sales_count: number;
+    conversion_rate: number;
+  } | null;
+  poorPerformers: Array<{
+    name: string;
+    count: number;
+    visit_count_week: number;
+    total_sales_amount: number;
+    conversion_rate: number;
+  }>;
   redFlagCounts: { high: number; medium: number; low: number };
 }): string {
   return JSON.stringify(input, null, 2);
@@ -245,8 +269,32 @@ export async function generateWeeklyInsight(input: {
     avg_conversion_rate: number;
     total_salesmen: number;
   };
+  prev_totals: {
+    total_visits: number;
+    total_sales_amount: number;
+    total_sales_qty: number;
+    avg_conversion_rate: number;
+    total_salesmen: number;
+    period: { from: string; to: string };
+  };
   topBySales: Array<{ name: string; amount: number }>;
   topByConversion: Array<{ name: string; rate: number }>;
+  topLeadersBySales: Array<{ name: string; amount: number }>;
+  topSalesmanBySales: { name: string; amount: number } | null;
+  topRegionByVisits: { name: string; visit_count: number } | null;
+  lowConversionRegion: {
+    name: string;
+    visit_count: number;
+    outlet_with_sales_count: number;
+    conversion_rate: number;
+  } | null;
+  poorPerformers: Array<{
+    name: string;
+    count: number;
+    visit_count_week: number;
+    total_sales_amount: number;
+    conversion_rate: number;
+  }>;
   redFlagCounts: { high: number; medium: number; low: number };
 }): Promise<WeeklyInsight> {
   const dataPrompt = buildWeeklyPrompt(input);
@@ -258,23 +306,47 @@ ATURAN PENTING:
 2. Jangan menuduh siapa pun melakukan kecurangan atau pelanggaran
 3. Hindari kata "bendera" atau "red flag" dalam output
 4. Ringkas namun spesifik
-5. Fokus pada insight yang dapat ditindaklanjuti
+5. Ikuti definisi ketat Sorotan/Risiko/Tindakan di bawah
 
 FORMAT OUTPUT (JSON ketat):
 {
   "period": { "from": "YYYY-MM-DD", "to": "YYYY-MM-DD" },
   "summary": {
-    "highlights": ["array string berisi 3-5 hal positif"],
-    "risks": ["array string berisi 3-5 risiko atau hal yang perlu perhatian"],
-    "actions": ["array string berisi 3-5 tindakan yang direkomendasikan"]
+    "highlights": ["array string berisi 5 poin sorotan"],
+    "risks": ["array string berisi 1-3 risiko"],
+    "actions": ["array string berisi 1-3 tindakan mitigasi"]
   },
   "detail": "paragraf singkat (3-5 kalimat) yang merangkum performa minggu ini",
   "notes": "string tunggal untuk konteks tambahan"
+}
+
+DEFINISI KETAT:
+- Sorotan: HANYA laporan fakta (metrik, top performer, deskripsi kejadian). Tidak boleh berisi risiko, saran, atau prediksi.
+- Risiko: HANYA hal yang dapat menyebabkan kerugian bisnis dalam 30 hari ke depan. Maks 1 risiko utama + 2 risiko sekunder.
+- Tindakan: HANYA langkah mitigasi yang secara langsung menjawab risiko yang disebutkan. Tidak boleh ada aksi yang tidak terkait risiko.
+- Setiap tindakan WAJIB menyebut target risiko (contoh: "Mitigasi Risiko 1: ...").
+- Format Risiko Utama WAJIB satu kalimat: "[WHAT], which may [BUSINESS IMPACT], if not addressed within [TIMEFRAME]."
+- Risiko sekunder boleh singkat tanpa penjelasan.
+- Jika tidak ada risiko valid, isi risks dengan: ["Tidak ada risiko kritis minggu ini."] dan actions harus [].
+
+FORMAT SOROTAN (WAJIB 5 poin, urutan tetap):
+1) Total penjualan + unit terjual, bandingkan dengan minggu sebelumnya.
+2) Rata-rata konversi, bandingkan dengan minggu sebelumnya.
+3) Performa leader terbaik (sebutkan nama).
+4) Sales dengan performa terbaik (sebutkan nama).
+5) Daerah (region) dengan kunjungan paling ramai.
 }`;
 
   const userPrompt = `Analisis data mingguan berikut dan buat laporan sesuai format JSON:
 
 ${dataPrompt}
+
+Patuhi DEFINISI KETAT. Pastikan:
+- Sorotan hanya fakta.
+- Risiko hanya risiko berdampak 30 hari ke depan, bukan peluang.
+- Tindakan harus langsung merespons Risiko dan menyebut "Risiko 1/2/3".
+- Risiko utama harus satu kalimat dengan format: "[WHAT], which may [BUSINESS IMPACT], if not addressed within [TIMEFRAME]."
+- Sorotan harus mengikuti urutan 1-5 sesuai FORMAT SOROTAN dan menyertakan perbandingan vs minggu sebelumnya.
 `;
 
   try {
@@ -297,10 +369,193 @@ ${dataPrompt}
       throw new Error("Invalid response structure");
     }
 
-    return parsed;
+    return normalizeWeeklyInsight(parsed, input);
   } catch {
     return generateWeeklyFallbackInsight(input);
   }
+}
+
+function buildWeeklyHighlights(input: {
+  totals: {
+    total_sales_amount: number;
+    total_sales_qty: number;
+    avg_conversion_rate: number;
+  };
+  prev_totals: {
+    total_sales_amount: number;
+    total_sales_qty: number;
+    avg_conversion_rate: number;
+  };
+  topLeadersBySales: Array<{ name: string; amount: number }>;
+  topSalesmanBySales: { name: string; amount: number } | null;
+  topRegionByVisits: { name: string; visit_count: number } | null;
+  lowConversionRegion: {
+    name: string;
+    visit_count: number;
+    outlet_with_sales_count: number;
+    conversion_rate: number;
+  } | null;
+  poorPerformers: Array<{
+    name: string;
+    count: number;
+    visit_count_week: number;
+    total_sales_amount: number;
+    conversion_rate: number;
+  }>;
+}): string[] {
+  const trendLabel = (current: number, prev: number) => {
+    if (current > prev) return "naik";
+    if (current < prev) return "turun";
+    return "stabil";
+  };
+
+  const totalSalesTrend = trendLabel(
+    input.totals.total_sales_amount,
+    input.prev_totals.total_sales_amount
+  );
+  const salesHighlight = `Total penjualan ${formatCurrency(
+    input.totals.total_sales_amount
+  )} dengan ${input.totals.total_sales_qty} unit terjual, ${totalSalesTrend} dibanding minggu lalu (${formatCurrency(
+    input.prev_totals.total_sales_amount
+  )} dan ${input.prev_totals.total_sales_qty} unit).`;
+
+  const conversionTrend = trendLabel(
+    input.totals.avg_conversion_rate,
+    input.prev_totals.avg_conversion_rate
+  );
+  const conversionHighlight = `Rata-rata konversi ${formatPercentage(
+    input.totals.avg_conversion_rate
+  )}, ${conversionTrend} dibanding minggu lalu (${formatPercentage(
+    input.prev_totals.avg_conversion_rate
+  )}).`;
+
+  const leaderNames =
+    input.topLeadersBySales.length > 0
+      ? input.topLeadersBySales.map((l) => l.name).join(" dan ")
+      : "Belum ada leader dengan kontribusi penjualan signifikan";
+  const leaderHighlight = `Performa leader terbaik minggu ini: ${leaderNames}.`;
+
+  const topSalesHighlight = input.topSalesmanBySales
+    ? `Sales dengan performa terbaik: ${input.topSalesmanBySales.name}.`
+    : "Belum ada sales dengan performa penjualan menonjol minggu ini.";
+
+  const topRegionHighlight = input.topRegionByVisits
+    ? `Daerah paling ramai minggu ini: ${input.topRegionByVisits.name}.`
+    : "Belum ada data kunjungan region yang dominan minggu ini.";
+
+  return [
+    salesHighlight,
+    conversionHighlight,
+    leaderHighlight,
+    topSalesHighlight,
+    topRegionHighlight,
+  ];
+}
+
+function normalizeWeeklyInsight(
+  input: WeeklyInsight,
+  context: {
+    totals: {
+      total_sales_amount: number;
+      total_sales_qty: number;
+      avg_conversion_rate: number;
+    };
+    prev_totals: {
+      total_sales_amount: number;
+      total_sales_qty: number;
+      avg_conversion_rate: number;
+    };
+    topLeadersBySales: Array<{ name: string; amount: number }>;
+    topSalesmanBySales: { name: string; amount: number } | null;
+    topRegionByVisits: { name: string; visit_count: number } | null;
+    lowConversionRegion: {
+      name: string;
+      visit_count: number;
+      outlet_with_sales_count: number;
+      conversion_rate: number;
+    } | null;
+    poorPerformers: Array<{ name: string; count: number; reasons: string[] }>;
+  }
+): WeeklyInsight {
+  const forbiddenRiskKeywords = [
+    "peluang",
+    "opportunity",
+    "optimasi",
+    "optimalisasi",
+    "growth",
+    "pertumbuhan",
+    "eksplorasi",
+    "potensi",
+  ];
+  const isValidRisk = (risk: string) =>
+    !forbiddenRiskKeywords.some((k) => risk.toLowerCase().includes(k));
+
+  const risks = Array.isArray(input.summary?.risks) ? input.summary.risks : [];
+  const actions = Array.isArray(input.summary?.actions) ? input.summary.actions : [];
+
+  const buildRisks = (): string[] => {
+    const result: string[] = [];
+    const poorPerformers = context.poorPerformers || [];
+    if (poorPerformers.length > 0) {
+      const names = poorPerformers.map((p) => p.name).join(", ");
+      const reasonParts = poorPerformers
+        .map((p) => {
+          if (p.visit_count_week <= 0) return "";
+          if (p.total_sales_amount > 0) {
+            return `${p.name} Melakukan ${p.visit_count_week} kunjungan dalam seminggu dengan penjualan ${formatCurrency(
+              p.total_sales_amount
+            )} dan konversi ${formatPercentage(p.conversion_rate)}`;
+          }
+          return `${p.name} Melakukan ${p.visit_count_week} kunjungan dalam seminggu tapi tidak ada penjualan`;
+        })
+        .filter(Boolean)
+        .join(". ");
+      const reasonText = reasonParts ? ` Penyebab utama: ${reasonParts}.` : "";
+      result.push(
+        `${poorPerformers.length} sales berperforma kurang: ${names}.${reasonText}`
+      );
+    }
+
+    if (context.lowConversionRegion && context.lowConversionRegion.visit_count > 0) {
+      result.push(
+        `Konversi rendah di ${context.lowConversionRegion.name}: ${context.lowConversionRegion.outlet_with_sales_count} deal dari ${context.lowConversionRegion.visit_count} kunjungan.`
+      );
+    }
+
+    if (context.prev_totals.total_visits > 0 && context.totals.total_visits < context.prev_totals.total_visits) {
+      result.push(
+        `Jumlah kunjungan turun dari ${context.prev_totals.total_visits} menjadi ${context.totals.total_visits}.`
+      );
+    }
+
+    if (context.totals.avg_conversion_rate < 0.3) {
+      result.push(
+        `Rata-rata konversi rendah: ${formatPercentage(context.totals.avg_conversion_rate)}.`
+      );
+    }
+
+    const filtered = result.filter((r) => isValidRisk(r));
+    return filtered.length === 0 ? ["Tidak ada risiko kritis minggu ini."] : filtered.slice(0, 4);
+  };
+
+  const normalizedRisks = buildRisks();
+
+  const actionPattern = /risiko\s*[1-3]/i;
+  const normalizedActions =
+    normalizedRisks[0] === "Tidak ada risiko kritis minggu ini."
+      ? []
+      : actions.filter((a) => actionPattern.test(a)).slice(0, 3);
+
+  const forcedHighlights = buildWeeklyHighlights(context);
+
+  return {
+    ...input,
+    summary: {
+      highlights: forcedHighlights,
+      risks: normalizedRisks,
+      actions: normalizedActions,
+    },
+  };
 }
 
 export function generateWeeklyFallbackInsight(input: {
@@ -312,58 +567,103 @@ export function generateWeeklyFallbackInsight(input: {
     avg_conversion_rate: number;
     total_salesmen: number;
   };
+  prev_totals: {
+    total_visits: number;
+    total_sales_amount: number;
+    total_sales_qty: number;
+    avg_conversion_rate: number;
+    total_salesmen: number;
+    period: { from: string; to: string };
+  };
   topBySales: Array<{ name: string; amount: number }>;
   topByConversion: Array<{ name: string; rate: number }>;
+  topLeadersBySales: Array<{ name: string; amount: number }>;
+  topSalesmanBySales: { name: string; amount: number } | null;
+  topRegionByVisits: { name: string; visit_count: number } | null;
+  lowConversionRegion: {
+    name: string;
+    visit_count: number;
+    outlet_with_sales_count: number;
+    conversion_rate: number;
+  } | null;
+  poorPerformers: Array<{
+    name: string;
+    count: number;
+    visit_count_week: number;
+    total_sales_amount: number;
+    conversion_rate: number;
+  }>;
   redFlagCounts: { high: number; medium: number; low: number };
 }): WeeklyInsight {
-  const highlights: string[] = [];
+  const highlights = buildWeeklyHighlights({
+    totals: {
+      total_sales_amount: input.totals.total_sales_amount,
+      total_sales_qty: input.totals.total_sales_qty,
+      avg_conversion_rate: input.totals.avg_conversion_rate,
+    },
+    prev_totals: {
+      total_sales_amount: input.prev_totals.total_sales_amount,
+      total_sales_qty: input.prev_totals.total_sales_qty,
+      avg_conversion_rate: input.prev_totals.avg_conversion_rate,
+    },
+    topLeadersBySales: input.topLeadersBySales,
+    topSalesmanBySales: input.topSalesmanBySales,
+    topRegionByVisits: input.topRegionByVisits,
+  });
   const risks: string[] = [];
   const actions: string[] = [];
 
-  highlights.push(
-    `Total ${input.totals.total_visits} kunjungan oleh ${input.totals.total_salesmen} sales selama periode ini`
-  );
-  highlights.push(
-    `Total penjualan ${formatCurrency(input.totals.total_sales_amount)} (${input.totals.total_sales_qty} unit)`
-  );
-  if (input.topBySales[0]) {
-    highlights.push(
-      `Penyumbang penjualan terbesar: ${input.topBySales[0].name} (${formatCurrency(input.topBySales[0].amount)})`
+  const poorPerformers = input.poorPerformers || [];
+  if (poorPerformers.length > 0) {
+    const names = poorPerformers.map((p) => p.name).join(", ");
+    const reasonParts = poorPerformers
+      .map((p) => {
+        if (p.visit_count_week <= 0) return "";
+        if (p.total_sales_amount > 0) {
+          return `${p.name} Melakukan ${p.visit_count_week} kunjungan dalam seminggu dengan penjualan ${formatCurrency(
+            p.total_sales_amount
+          )} dan konversi ${formatPercentage(p.conversion_rate)}`;
+        }
+        return `${p.name} Melakukan ${p.visit_count_week} kunjungan dalam seminggu tapi tidak ada penjualan`;
+      })
+      .filter(Boolean)
+      .join(". ");
+    const reasonText = reasonParts ? ` Penyebab utama: ${reasonParts}.` : "";
+    risks.push(`${poorPerformers.length} sales berperforma kurang: ${names}.${reasonText}`);
+  }
+
+  if (input.lowConversionRegion && input.lowConversionRegion.visit_count > 0) {
+    risks.push(
+      `Konversi rendah di ${input.lowConversionRegion.name}: ${input.lowConversionRegion.outlet_with_sales_count} deal dari ${input.lowConversionRegion.visit_count} kunjungan.`
     );
   }
 
-  if (input.redFlagCounts.high > 0) {
+  if (input.prev_totals.total_visits > 0 && input.totals.total_visits < input.prev_totals.total_visits) {
     risks.push(
-      `${input.redFlagCounts.high} pola risiko tingkat tinggi perlu ditinjau`
+      `Jumlah kunjungan turun dari ${input.prev_totals.total_visits} menjadi ${input.totals.total_visits}.`
     );
   }
-  if (input.redFlagCounts.medium > 0) {
+
+  if (input.totals.avg_conversion_rate < 0.3) {
     risks.push(
-      `${input.redFlagCounts.medium} pola risiko tingkat sedang membutuhkan perhatian`
+      `Rata-rata konversi rendah: ${formatPercentage(input.totals.avg_conversion_rate)}.`
     );
   }
-  if (input.totals.avg_conversion_rate < 0.3 && input.totals.total_visits > 0) {
-    risks.push(
-      `Rata-rata konversi rendah: ${formatPercentage(input.totals.avg_conversion_rate)}`
-    );
-  }
+
   if (risks.length === 0) {
-    risks.push("Tidak ada risiko signifikan yang teridentifikasi minggu ini");
+    risks.push("Tidak ada risiko kritis minggu ini.");
   }
 
-  actions.push("Fokuskan follow-up pada outlet dengan konversi rendah");
-  if (input.topByConversion[0]) {
-    actions.push(
-      `Replikasi pola kerja ${input.topByConversion[0].name} ke sales lain`
-    );
+  if (risks[0] !== "Tidak ada risiko kritis minggu ini.") {
+    actions.push("Mitigasi Risiko 1: Audit performa sales yang berperforma kurang");
+    actions.push("Mitigasi Risiko 2: Pendampingan untuk area dengan konversi rendah");
   }
-  actions.push("Evaluasi jadwal kunjungan agar lebih merata antar outlet");
 
   return {
     period: input.period,
     summary: { highlights, risks, actions },
     detail:
-      "Secara umum performa minggu ini stabil dengan kontribusi utama dari beberapa sales teratas. Konversi rata-rata masih perlu dijaga agar tetap konsisten. Perlu fokus pada outlet yang berkonversi rendah dan peningkatan pemerataan kunjungan.",
+      "Secara umum performa minggu ini stabil dengan kontribusi utama dari beberapa sales teratas. Rata-rata konversi dan volume kunjungan bergerak sejalan dengan distribusi aktivitas sales selama periode ini.",
     notes: "Laporan ini dihasilkan otomatis dari data mingguan.",
   };
 }
