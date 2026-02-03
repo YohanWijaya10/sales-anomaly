@@ -491,11 +491,13 @@ function normalizeWeeklyInsight(
   input: WeeklyInsight,
   context: {
     totals: {
+      total_visits: number;
       total_sales_amount: number;
       total_sales_qty: number;
       avg_conversion_rate: number;
     };
     prev_totals: {
+      total_visits: number;
       total_sales_amount: number;
       total_sales_qty: number;
       avg_conversion_rate: number;
@@ -509,7 +511,30 @@ function normalizeWeeklyInsight(
       outlet_with_sales_count: number;
       conversion_rate: number;
     } | null;
-    poorPerformers: Array<{ name: string; count: number; reasons: string[] }>;
+    poorPerformers: Array<{ name: string; count: number }>;
+    salesPerformance: Array<{
+      salesman_id: string;
+      name: string;
+      visit_count_week: number;
+      total_sales_amount: number;
+      outlet_with_sales_count: number;
+    }>;
+    regions: Array<{
+      id: string;
+      name: string;
+      visit_count: number;
+      total_sales_amount: number;
+      outlet_with_sales_count: number;
+      conversion_rate: number;
+    }>;
+    prev_regions: Array<{
+      id: string;
+      name: string;
+      visit_count: number;
+      total_sales_amount: number;
+      outlet_with_sales_count: number;
+      conversion_rate: number;
+    }>;
   }
 ): WeeklyInsight {
   const forbiddenRiskKeywords = [
@@ -545,55 +570,59 @@ function normalizeWeeklyInsight(
       .sort((a, b) => a.conversion_rate - b.conversion_rate)
       .slice(0, 3);
 
-    const lowEffectivenessSales = salesPerf
+    const zeroSales = salesPerf
       .filter((s) => s.visit_count_week > 0 && s.total_sales_amount === 0)
-      .slice(0, 3);
+      .slice(0, 2);
 
-    if (lowConversionSales.length > 0 || lowEffectivenessSales.length > 0) {
-      const lowConvText =
-        lowConversionSales.length > 0
-          ? `Sales dengan konversi rendah (<30%): ${lowConversionSales
-              .map(
-                (s) =>
-                  `${s.name} (${formatPercentage(
-                    s.outlet_with_sales_count / s.visit_count_week
-                  )}, ${s.outlet_with_sales_count} deal dari ${s.visit_count_week} kunjungan)`
-              )
-              .join("; ")}.`
-          : "Sales dengan konversi rendah (<30%): tidak ada.";
+    // Risk 1: Sales dengan performa rendah
+    if (lowConversionSales.length > 0 || zeroSales.length > 0) {
+      const parts: string[] = [];
 
-      const lowEffText =
-        lowEffectivenessSales.length > 0
-          ? `Sales dengan efektivitas rendah: ${lowEffectivenessSales
-              .map(
-                (s) =>
-                  `${s.name} (0 penjualan dari ${s.visit_count_week} kunjungan)`
-              )
-              .join("; ")}.`
-          : "Sales dengan efektivitas rendah: tidak ada.";
+      if (zeroSales.length > 0) {
+        const names = zeroSales.map((s) => s.name);
+        if (zeroSales.length === 1) {
+          parts.push(`${names[0]} perlu perhatian khusus karena dari ${zeroSales[0].visit_count_week} kunjungan belum ada yang berhasil closing`);
+        } else {
+          parts.push(`${names.join(" dan ")} belum menghasilkan deal sama sekali meski sudah melakukan banyak kunjungan`);
+        }
+      }
 
-      result.push(`${lowConvText} ${lowEffText}`);
-    } else {
-      result.push("Tidak ada sales dengan konversi rendah (<30%) atau efektivitas rendah.");
+      const otherLowConv = lowConversionSales.filter(
+        (s) => !zeroSales.some((z) => z.name === s.name)
+      );
+      if (otherLowConv.length > 0) {
+        const convTexts = otherLowConv.map(
+          (s) => `${s.name} hanya ${s.outlet_with_sales_count} deal dari ${s.visit_count_week} kunjungan`
+        );
+        parts.push(convTexts.join(", "));
+      }
+
+      result.push(parts.join(". ") + ".");
     }
 
+    // Risk 2: Wilayah dengan konversi rendah
     const lowRegions = (context.regions || [])
       .filter((r) => r.visit_count > 0 && r.conversion_rate < 0.3)
       .sort((a, b) => a.conversion_rate - b.conversion_rate)
       .slice(0, 2);
+
     if (lowRegions.length > 0) {
-      result.push(
-        `Konversi rendah per wilayah: ${lowRegions
-          .map(
-            (r) =>
-              `${r.name} ${formatPercentage(r.conversion_rate)} (${r.outlet_with_sales_count} deal dari ${r.visit_count} kunjungan)`
-          )
-          .join("; ")}.`
-      );
-    } else {
-      result.push("Tidak ada wilayah dengan konversi <30%.");
+      if (lowRegions.length === 1) {
+        const r = lowRegions[0];
+        result.push(
+          `Wilayah ${r.name} masih jadi tantangan dengan tingkat closing hanya ${formatPercentage(r.conversion_rate)} (${r.outlet_with_sales_count} deal dari ${r.visit_count} kunjungan).`
+        );
+      } else {
+        const regionTexts = lowRegions.map(
+          (r) => `${r.name} (${formatPercentage(r.conversion_rate)})`
+        );
+        result.push(
+          `${regionTexts.join(" dan ")} masih perlu perbaikan strategi karena tingkat closing-nya di bawah 30%.`
+        );
+      }
     }
 
+    // Risk 3: Wilayah dengan penurunan signifikan
     const prevRegionMap = new Map(
       (context.prev_regions || []).map((r) => [r.id, r])
     );
@@ -618,20 +647,22 @@ function normalizeWeeklyInsight(
       .slice(0, 2);
 
     if (decliningRegions.length > 0) {
-      result.push(
-        `Wilayah dengan penurunan performa signifikan: ${decliningRegions
-          .map(
-            (r) =>
-              `${r.name} turun ${r.dropPct.toFixed(1)}% (${formatCurrency(
-                r.prevSales
-              )} → ${formatCurrency(r.currentSales)})`
-          )
-          .join("; ")}.`
-      );
-    } else {
-      result.push("Tidak ada wilayah dengan penurunan performa signifikan minggu ini.");
+      if (decliningRegions.length === 1) {
+        const r = decliningRegions[0];
+        result.push(
+          `Penjualan di ${r.name} turun ${r.dropPct.toFixed(0)}% dibanding minggu lalu, dari ${formatCurrency(r.prevSales)} menjadi ${formatCurrency(r.currentSales)}.`
+        );
+      } else {
+        const texts = decliningRegions.map(
+          (r) => `${r.name} turun ${r.dropPct.toFixed(0)}%`
+        );
+        result.push(
+          `Beberapa wilayah mengalami penurunan penjualan yang cukup signifikan: ${texts.join(" dan ")}.`
+        );
+      }
     }
 
+    // Risk 4: Penurunan kunjungan
     if (
       context.prev_totals.total_visits > 0 &&
       context.totals.total_visits < context.prev_totals.total_visits
@@ -641,52 +672,42 @@ function normalizeWeeklyInsight(
           context.prev_totals.total_visits) *
         100;
       result.push(
-        `Penurunan total kunjungan: turun ${drop.toFixed(1)}% (${context.prev_totals.total_visits} → ${context.totals.total_visits}), berpotensi menekan revenue.`
+        `Aktivitas kunjungan menurun ${drop.toFixed(0)}% dari minggu sebelumnya (${context.prev_totals.total_visits} → ${context.totals.total_visits} kunjungan), ini bisa berdampak pada pipeline penjualan.`
       );
-    } else {
-      result.push("Tidak ada penurunan total kunjungan.");
     }
 
+    // Risk 5: Penurunan konversi
     if (context.totals.avg_conversion_rate < context.prev_totals.avg_conversion_rate) {
-      const drop =
+      const dropPp =
         (context.prev_totals.avg_conversion_rate - context.totals.avg_conversion_rate) *
         100;
-      result.push(
-        `Penurunan konversi rata-rata: turun ${drop.toFixed(1)}%p (${formatPercentage(
-          context.prev_totals.avg_conversion_rate
-        )} → ${formatPercentage(context.totals.avg_conversion_rate)}), berdampak pada closing rate keseluruhan.`
-      );
-    } else {
-      result.push("Tidak ada penurunan konversi rata-rata.");
+      if (dropPp >= 1) {
+        result.push(
+          `Rata-rata closing rate turun ${dropPp.toFixed(1)} poin dari ${formatPercentage(context.prev_totals.avg_conversion_rate)} menjadi ${formatPercentage(context.totals.avg_conversion_rate)}.`
+        );
+      }
     }
 
+    // Risk 6: Penurunan penjualan total
     if (context.totals.total_sales_amount < context.prev_totals.total_sales_amount) {
       const dropValue =
         context.prev_totals.total_sales_amount - context.totals.total_sales_amount;
       const dropPct =
         (dropValue / context.prev_totals.total_sales_amount) * 100;
       result.push(
-        `Penurunan total penjualan: turun ${dropPct.toFixed(1)}% (${formatCurrency(
-          context.prev_totals.total_sales_amount
-        )} → ${formatCurrency(context.totals.total_sales_amount)}), selisih ${formatCurrency(
-          dropValue
-        )}.`
+        `Total penjualan minggu ini lebih rendah ${formatCurrency(dropValue)} (${dropPct.toFixed(1)}%) dibanding minggu lalu.`
       );
-    } else {
-      result.push("Tidak ada penurunan total penjualan.");
     }
 
     const filtered = result.filter((r) => isValidRisk(r));
-    const allEmpty = filtered.every((r) => r.startsWith("Tidak ada"));
-    return allEmpty ? ["Tidak ada risiko kritis minggu ini."] : filtered;
+    return filtered.length > 0 ? filtered : ["Secara umum performa minggu ini cukup stabil tanpa risiko yang signifikan."];
   };
 
   const normalizedRisks = buildRisks();
-  const narratedRisks = normalizedRisks.map(narrateWeeklyRisk);
 
   const actionPattern = /risiko\s*[1-3]/i;
   const normalizedActions =
-    normalizedRisks[0] === "Tidak ada risiko kritis minggu ini."
+    normalizedRisks[0] === "Secara umum performa minggu ini cukup stabil tanpa risiko yang signifikan."
       ? []
       : actions.filter((a) => actionPattern.test(a)).slice(0, 3);
 
@@ -696,57 +717,10 @@ function normalizeWeeklyInsight(
     ...input,
     summary: {
       highlights: forcedHighlights,
-      risks: narratedRisks,
+      risks: normalizedRisks,
       actions: normalizedActions,
     },
   };
-}
-
-function narrateWeeklyRisk(risk: string): string {
-  const trimmed = risk.trim();
-  if (trimmed.startsWith("Sales dengan konversi rendah")) {
-    return trimmed.replace(
-      "Sales dengan konversi rendah (<30%):",
-      "Terdapat sales dengan konversi rendah (<30%), dengan rincian:"
-    );
-  }
-  if (trimmed.startsWith("Sales dengan efektivitas rendah")) {
-    return trimmed.replace(
-      "Sales dengan efektivitas rendah:",
-      "Beberapa sales belum menghasilkan penjualan; rincian:"
-    );
-  }
-  if (trimmed.startsWith("Konversi rendah per wilayah")) {
-    return trimmed.replace(
-      "Konversi rendah per wilayah:",
-      "Sejumlah wilayah menunjukkan konversi rendah; rincian:"
-    );
-  }
-  if (trimmed.startsWith("Wilayah dengan penurunan performa signifikan")) {
-    return trimmed.replace(
-      "Wilayah dengan penurunan performa signifikan:",
-      "Ada wilayah dengan penurunan performa signifikan; rincian:"
-    );
-  }
-  if (trimmed.startsWith("Penurunan total kunjungan")) {
-    return trimmed.replace(
-      "Penurunan total kunjungan:",
-      "Total kunjungan menurun; rincian:"
-    );
-  }
-  if (trimmed.startsWith("Penurunan konversi rata-rata")) {
-    return trimmed.replace(
-      "Penurunan konversi rata-rata:",
-      "Rata-rata konversi menurun; rincian:"
-    );
-  }
-  if (trimmed.startsWith("Penurunan total penjualan")) {
-    return trimmed.replace(
-      "Penurunan total penjualan:",
-      "Total penjualan melemah; rincian:"
-    );
-  }
-  return trimmed;
 }
 
 export function generateWeeklyFallbackInsight(input: {
@@ -836,11 +810,13 @@ export function generateWeeklyFallbackInsight(input: {
 
   return normalizeWeeklyInsight(baseInsight, {
     totals: {
+      total_visits: input.totals.total_visits,
       total_sales_amount: input.totals.total_sales_amount,
       total_sales_qty: input.totals.total_sales_qty,
       avg_conversion_rate: input.totals.avg_conversion_rate,
     },
     prev_totals: {
+      total_visits: input.prev_totals.total_visits,
       total_sales_amount: input.prev_totals.total_sales_amount,
       total_sales_qty: input.prev_totals.total_sales_qty,
       avg_conversion_rate: input.prev_totals.avg_conversion_rate,
