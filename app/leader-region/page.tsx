@@ -164,7 +164,7 @@ export default function LeaderRegionPage() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
             <div className="bg-[#151515] rounded-lg border border-[#222222] overflow-hidden">
               <div className="px-6 py-4 border-b border-[#222222]">
                 <h2 className="text-lg font-semibold text-[#e6e6e6]">
@@ -193,8 +193,11 @@ export default function LeaderRegionPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-[#151515] divide-y divide-[#222222]">
-                    {data.leaders.map((l) => (
-                      <tr key={l.id} className="hover:bg-[#1b1b1b]">
+                    {data.leaders.map((l, idx) => (
+                      <tr
+                        key={l.id}
+                        className={`${idx % 2 === 1 ? "bg-[#141414]" : ""} hover:bg-[#1b1b1b]`}
+                      >
                         <td className="px-6 py-4 text-sm text-[#e6e6e6]">
                           <div className="font-medium">{l.name}</div>
                           <div className="text-xs text-[#9aa0a6]">{l.code}</div>
@@ -266,8 +269,11 @@ export default function LeaderRegionPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-[#151515] divide-y divide-[#222222]">
-                    {data.regions.map((r) => (
-                      <tr key={r.id} className="hover:bg-[#1b1b1b]">
+                    {data.regions.map((r, idx) => (
+                      <tr
+                        key={r.id}
+                        className={`${idx % 2 === 1 ? "bg-[#141414]" : ""} hover:bg-[#1b1b1b]`}
+                      >
                         <td className="px-6 py-4 text-sm text-[#e6e6e6]">
                           <div className="font-medium">{r.name}</div>
                           <div className="text-xs text-[#9aa0a6]">{r.code}</div>

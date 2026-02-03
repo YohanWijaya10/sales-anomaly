@@ -266,17 +266,15 @@ async function seed() {
       checkinCount++;
     }
 
-    // Alice makes 2-3 sales per day
-    for (let i = 0; i < 3; i++) {
-      if (Math.random() > 0.3) {
-        const amount = Math.floor(Math.random() * 2000000) + 500000;
-        const qty = Math.floor(amount / 50000);
-        const leaderId = SALESMEN[0].leader_id;
-        const regionId = SALESMEN[0].region_id;
-        await sql`INSERT INTO sales (salesman_id, leader_id, region_id, outlet_id, ts, amount, qty)
-          VALUES (${alice}, ${leaderId}, ${regionId}, ${outlets[i]}, ${getDate(day, times[i])}, ${amount}, ${qty})`;
-        salesCount++;
-      }
+    // Alice makes 4 sales per day (gap kecil vs kunjungan)
+    for (let i = 0; i < 4; i++) {
+      const amount = Math.floor(Math.random() * 2000000) + 500000;
+      const qty = Math.floor(amount / 50000);
+      const leaderId = SALESMEN[0].leader_id;
+      const regionId = SALESMEN[0].region_id;
+      await sql`INSERT INTO sales (salesman_id, leader_id, region_id, outlet_id, ts, amount, qty)
+        VALUES (${alice}, ${leaderId}, ${regionId}, ${outlets[i]}, ${getDate(day, times[i])}, ${amount}, ${qty})`;
+      salesCount++;
     }
   }
 
@@ -339,15 +337,13 @@ async function seed() {
     }
 
     for (let i = 0; i < 5; i++) {
-      if (Math.random() > 0.1) {
-        const amount = Math.floor(Math.random() * 3500000) + 800000;
-        const qty = Math.floor(amount / 50000);
-        const leaderId = SALESMEN[3].leader_id;
-        const regionId = SALESMEN[3].region_id;
-        await sql`INSERT INTO sales (salesman_id, leader_id, region_id, outlet_id, ts, amount, qty)
-          VALUES (${dewi}, ${leaderId}, ${regionId}, ${outlets[i]}, ${getDate(day, times[i])}, ${amount}, ${qty})`;
-        salesCount++;
-      }
+      const amount = Math.floor(Math.random() * 3500000) + 800000;
+      const qty = Math.floor(amount / 50000);
+      const leaderId = SALESMEN[3].leader_id;
+      const regionId = SALESMEN[3].region_id;
+      await sql`INSERT INTO sales (salesman_id, leader_id, region_id, outlet_id, ts, amount, qty)
+        VALUES (${dewi}, ${leaderId}, ${regionId}, ${outlets[i]}, ${getDate(day, times[i])}, ${amount}, ${qty})`;
+      salesCount++;
     }
   }
 
@@ -364,14 +360,16 @@ async function seed() {
       checkinCount++;
     }
 
-    for (let i = 0; i < 2; i++) {
-      const amount = Math.floor(Math.random() * 6000000) + 2000000;
-      const qty = Math.floor(amount / 75000);
-      const leaderId = SALESMEN[4].leader_id;
-      const regionId = SALESMEN[4].region_id;
-      await sql`INSERT INTO sales (salesman_id, leader_id, region_id, outlet_id, ts, amount, qty)
-        VALUES (${eko}, ${leaderId}, ${regionId}, ${outlets[i]}, ${getDate(day, times[i])}, ${amount}, ${qty})`;
-      salesCount++;
+    for (let i = 0; i < 3; i++) {
+      if (i < 2 || Math.random() > 0.4) {
+        const amount = Math.floor(Math.random() * 6000000) + 2000000;
+        const qty = Math.floor(amount / 75000);
+        const leaderId = SALESMEN[4].leader_id;
+        const regionId = SALESMEN[4].region_id;
+        await sql`INSERT INTO sales (salesman_id, leader_id, region_id, outlet_id, ts, amount, qty)
+          VALUES (${eko}, ${leaderId}, ${regionId}, ${outlets[i]}, ${getDate(day, times[i])}, ${amount}, ${qty})`;
+        salesCount++;
+      }
     }
   }
 
@@ -390,7 +388,7 @@ async function seed() {
     }
 
     for (let i = 0; i < visitCount; i++) {
-      if (Math.random() > 0.6) {
+      if (Math.random() > 0.75) {
         const amount = Math.floor(Math.random() * 1500000) + 300000;
         const qty = Math.floor(amount / 50000);
         const leaderId = SALESMEN[5].leader_id;
@@ -406,7 +404,7 @@ async function seed() {
   for (let sIndex = 6; sIndex < SALESMEN.length; sIndex++) {
     const salesman = SALESMEN[sIndex];
   for (let day = 0; day < totalDays; day++) {
-      const visitCount = 4 + (day % 2);
+      const visitCount = 3 + (day % 2);
       const times = ["09:10", "10:40", "12:10", "14:05", "15:35"];
       const outlets = Array.from(
         { length: visitCount },
@@ -420,7 +418,7 @@ async function seed() {
       }
 
       for (let i = 0; i < visitCount; i++) {
-        if (Math.random() > 0.4) {
+        if (Math.random() > 0.15) {
           const amount = Math.floor(Math.random() * 2200000) + 400000;
           const qty = Math.floor(amount / 50000);
           await sql`INSERT INTO sales (salesman_id, leader_id, region_id, outlet_id, ts, amount, qty)
