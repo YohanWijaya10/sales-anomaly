@@ -236,11 +236,11 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-[#0b0b0b]">
       <header className="bg-[#111111] border-b border-[#222222]">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-2xl font-bold text-[#e6e6e6]">
               Dasbor Performa Sales
             </h1>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
               <label htmlFor="date" className="text-sm font-medium text-[#bfc5c9]">
                 Tanggal:
               </label>
@@ -249,7 +249,7 @@ export default function DashboardPage() {
                 id="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="border border-[#2a2a2a] bg-[#111111] text-[#e6e6e6] rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#c9f24b] focus:border-[#c9f24b]"
+                className="w-full sm:w-auto border border-[#2a2a2a] bg-[#111111] text-[#e6e6e6] rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#c9f24b] focus:border-[#c9f24b]"
               />
             </div>
           </div>
@@ -271,7 +271,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-[#151515] rounded-lg border border-[#222222] p-6">
                 <h3 className="text-sm font-medium text-[#9aa0a6]">Total Kunjungan</h3>
-                <p className="text-3xl font-bold text-[#e6e6e6] mt-2">
+                <p className="text-2xl md:text-3xl font-bold text-[#e6e6e6] mt-2">
                   {data.metrics.total_visits}
                 </p>
                 <p className="text-sm text-[#9aa0a6] mt-1">
@@ -281,7 +281,7 @@ export default function DashboardPage() {
 
               <div className="bg-[#151515] rounded-lg border border-[#222222] p-6">
                 <h3 className="text-sm font-medium text-[#9aa0a6]">Total Penjualan</h3>
-                <p className="text-3xl font-bold text-[#e6e6e6] mt-2">
+                <p className="text-2xl md:text-3xl font-bold text-[#e6e6e6] mt-2">
                   {formatCurrency(data.metrics.total_sales_amount)}
                 </p>
                 <p className="text-sm text-[#9aa0a6] mt-1">
@@ -291,7 +291,7 @@ export default function DashboardPage() {
 
               <div className="bg-[#151515] rounded-lg border border-[#222222] p-6">
                 <h3 className="text-sm font-medium text-[#9aa0a6]">Rata-rata Konversi</h3>
-                <p className="text-3xl font-bold text-[#e6e6e6] mt-2">
+                <p className="text-2xl md:text-3xl font-bold text-[#e6e6e6] mt-2">
                   {formatPercentage(data.metrics.avg_conversion_rate)}
                 </p>
                 <p className="text-sm text-[#9aa0a6] mt-1">outlet menjadi penjualan</p>
@@ -299,7 +299,7 @@ export default function DashboardPage() {
 
               <div className="bg-[#151515] rounded-lg border border-[#222222] p-6">
                 <h3 className="text-sm font-medium text-[#9aa0a6]">Tanda Risiko</h3>
-                <p className="text-3xl font-bold text-[#e6e6e6] mt-2">
+                <p className="text-2xl md:text-3xl font-bold text-[#e6e6e6] mt-2">
                   {data.red_flags.reduce((sum, rf) => sum + rf.red_flags.length, 0)}
                 </p>
                 <p className="text-sm text-[#9aa0a6] mt-1">
@@ -310,7 +310,7 @@ export default function DashboardPage() {
 
             {/* Weekly Report */}
             <div className="bg-[#151515] rounded-lg border border-[#222222] p-6">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
                 <div>
                   <h2 className="text-lg font-semibold text-[#e6e6e6]">
                     Laporan Mingguan
@@ -338,7 +338,7 @@ export default function DashboardPage() {
                       )
                       .finally(() => setWeeklyLoading(false));
                   }}
-                  className="px-3 py-1.5 bg-[#1b1b1b] text-[#cfd4d8] rounded-md text-xs font-medium border border-[#2a2a2a] hover:bg-[#222222]"
+                  className="w-full sm:w-auto px-3 py-1.5 bg-[#1b1b1b] text-[#cfd4d8] rounded-md text-xs font-medium border border-[#2a2a2a] hover:bg-[#222222]"
                 >
                   Refresh
                 </button>
@@ -357,7 +357,7 @@ export default function DashboardPage() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-[#142010] rounded-lg border border-[#22361a] p-4">
                       <h3 className="font-medium text-[#c9f24b] mb-2">Sorotan</h3>
-                      <ul className="space-y-1 text-sm text-[#cde7a6]">
+                      <ul className="space-y-1 text-sm leading-relaxed text-[#cde7a6]">
                         {weeklyInsight.summary.highlights.map((h, i) => (
                           <li key={i} className="flex items-start">
                             <span className="mr-2">+</span>
@@ -368,7 +368,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="bg-[#2a1111] rounded-lg border border-[#5a1d1d] p-4">
                       <h3 className="font-medium text-[#ffb3b3] mb-2">Risiko</h3>
-                      <ul className="space-y-1 text-sm text-[#f0b0b0]">
+                      <ul className="space-y-2 text-sm leading-relaxed text-[#f0b0b0]">
                         {weeklyInsight.summary.risks.map((r, i) => (
                           <li key={i} className="flex items-start">
                             <span className="mr-2">!</span>
@@ -379,7 +379,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="bg-[#112329] rounded-lg border border-[#1e3f4a] p-4">
                       <h3 className="font-medium text-[#8fd3ff] mb-2">Tindakan</h3>
-                      <ul className="space-y-1 text-sm text-[#b5e2ff]">
+                      <ul className="space-y-2 text-sm leading-relaxed text-[#b5e2ff]">
                         {weeklyInsight.summary.actions.map((a, i) => (
                           <li key={i} className="flex items-start">
                             <span className="mr-2">-&gt;</span>
@@ -390,7 +390,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="bg-[#0f0f0f] border border-[#222222] rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-3">
                       <h3 className="font-medium text-[#e6e6e6]">Detail Insiden Mingguan</h3>
                       <span className="text-xs text-[#9aa0a6]">
                         {weeklyIssues.length} sales terdampak
@@ -458,7 +458,7 @@ export default function DashboardPage() {
                       </div>
                     )}
                   </div>
-                  <div className="bg-[#111111] border border-[#222222] rounded-lg p-4 text-sm text-[#cfd4d8]">
+                  <div className="bg-[#111111] border border-[#222222] rounded-lg p-4 text-sm leading-relaxed text-[#cfd4d8]">
                     {weeklyInsight.detail}
                   </div>
                 </div>
@@ -485,12 +485,12 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-[#222222]">
-                      <thead className="bg-[#121212]">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
-                            Leader
-                          </th>
+                    <table className="min-w-[640px] w-full divide-y divide-[#222222]">
+                        <thead className="bg-[#121212]">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
+                              Leader
+                            </th>
                           <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
                             Kunjungan
                           </th>
@@ -501,10 +501,10 @@ export default function DashboardPage() {
                             Konversi
                           </th>
                         </tr>
-                      </thead>
-                      <tbody className="bg-[#151515] divide-y divide-[#222222]">
-                        {(leaderRegion?.leaders || []).map((l) => (
-                          <tr key={l.id} className="hover:bg-[#1b1b1b]">
+                        </thead>
+                        <tbody className="bg-[#151515] divide-y divide-[#222222]">
+                          {(leaderRegion?.leaders || []).map((l) => (
+                            <tr key={l.id} className="hover:bg-[#1b1b1b]">
                             <td className="px-6 py-4 text-sm text-[#e6e6e6]">
                               <div className="font-medium">{l.name}</div>
                               <div className="text-xs text-[#9aa0a6]">{l.code}</div>
@@ -530,17 +530,17 @@ export default function DashboardPage() {
                             </td>
                           </tr>
                         ))}
-                        {(leaderRegion?.leaders || []).length === 0 && (
-                          <tr>
-                            <td
-                              colSpan={4}
-                              className="px-6 py-6 text-center text-sm text-[#9aa0a6]"
-                            >
-                              Belum ada data leader untuk tanggal ini
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
+                          {(leaderRegion?.leaders || []).length === 0 && (
+                            <tr>
+                              <td
+                                colSpan={4}
+                                className="px-6 py-6 text-center text-sm text-[#9aa0a6]"
+                              >
+                                Belum ada data leader untuk tanggal ini
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
                     </table>
                   </div>
                 )}
@@ -562,12 +562,12 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-[#222222]">
-                      <thead className="bg-[#121212]">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
-                            Wilayah
-                          </th>
+                    <table className="min-w-[640px] w-full divide-y divide-[#222222]">
+                        <thead className="bg-[#121212]">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
+                              Wilayah
+                            </th>
                           <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
                             Kunjungan
                           </th>
@@ -578,10 +578,10 @@ export default function DashboardPage() {
                             Konversi
                           </th>
                         </tr>
-                      </thead>
-                      <tbody className="bg-[#151515] divide-y divide-[#222222]">
-                        {(leaderRegion?.regions || []).map((r) => (
-                          <tr key={r.id} className="hover:bg-[#1b1b1b]">
+                        </thead>
+                        <tbody className="bg-[#151515] divide-y divide-[#222222]">
+                          {(leaderRegion?.regions || []).map((r) => (
+                            <tr key={r.id} className="hover:bg-[#1b1b1b]">
                             <td className="px-6 py-4 text-sm text-[#e6e6e6]">
                               <div className="font-medium">{r.name}</div>
                               <div className="text-xs text-[#9aa0a6]">{r.code}</div>
@@ -607,17 +607,17 @@ export default function DashboardPage() {
                             </td>
                           </tr>
                         ))}
-                        {(leaderRegion?.regions || []).length === 0 && (
-                          <tr>
-                            <td
-                              colSpan={4}
-                              className="px-6 py-6 text-center text-sm text-[#9aa0a6]"
-                            >
-                              Belum ada data wilayah untuk tanggal ini
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
+                          {(leaderRegion?.regions || []).length === 0 && (
+                            <tr>
+                              <td
+                                colSpan={4}
+                                className="px-6 py-6 text-center text-sm text-[#9aa0a6]"
+                              >
+                                Belum ada data wilayah untuk tanggal ini
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
                     </table>
                   </div>
                 )}
@@ -753,7 +753,7 @@ export default function DashboardPage() {
                   Total: {formatCurrency(data.metrics.total_sales_amount)}
                 </span>
               </div>
-              <div className="h-72">
+              <div className="h-64 sm:h-72">
                 {contributionData.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-[#9aa0a6]">
                     Belum ada data penjualan
@@ -805,7 +805,7 @@ export default function DashboardPage() {
                 <h2 className="text-lg font-semibold text-[#e6e6e6]">Semua Sales</h2>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-[#222222]">
+                <table className="min-w-[760px] w-full divide-y divide-[#222222]">
                   <thead className="bg-[#121212]">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">

@@ -17,7 +17,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-[#0b0b0b] text-[#e6e6e6]">
+    <div className="min-h-screen bg-[#0b0b0b] text-[#e6e6e6] overflow-x-hidden">
       {/* Mobile top bar */}
       <div className="md:hidden sticky top-0 z-30 bg-[#111111] border-b border-[#222222]">
         <div className="flex items-center justify-between px-4 py-3">
@@ -36,7 +36,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Sidebar */}
-      <div className="flex">
+      <div className="flex min-w-0">
         <aside
           className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#111111] border-r border-[#222222] transform transition-transform duration-200 md:translate-x-0 ${
             open ? "translate-x-0" : "-translate-x-full"
@@ -84,7 +84,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           />
         )}
 
-        <main className="flex-1 min-h-screen md:ml-64">{children}</main>
+        <main className="flex-1 min-h-screen md:ml-64 min-w-0 w-full">
+          {children}
+        </main>
       </div>
     </div>
   );
