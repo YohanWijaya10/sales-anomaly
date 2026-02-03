@@ -14,6 +14,7 @@ interface OutletData {
 
 interface OutletsResponse {
   date: string;
+  period?: { from: string; to: string };
   outlets: OutletData[];
 }
 
@@ -32,6 +33,7 @@ function getTodayDate(): string {
 
 export default function OutletsPage() {
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
+  const [mode, setMode] = useState<"daily" | "weekly" | "monthly">("daily");
   const [data, setData] = useState<OutletsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,9 @@ export default function OutletsPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/analytics/outlets?date=${selectedDate}`);
+        const response = await fetch(
+          `/api/analytics/outlets?date=${selectedDate}&mode=${mode}`
+        );
         const result = await response.json();
         if (!response.ok) {
           throw new Error(result.error || "Gagal mengambil data");
@@ -54,15 +58,28 @@ export default function OutletsPage() {
       }
     }
     fetchData();
-  }, [selectedDate]);
+  }, [selectedDate, mode]);
 
   return (
     <div className="min-h-screen bg-[#0b0b0b]">
       <header className="bg-[#111111] border-b border-[#222222]">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-2xl font-bold text-[#e6e6e6]">Outlet</h1>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+              <label htmlFor="mode" className="text-sm font-medium text-[#bfc5c9]">
+                Periode:
+              </label>
+              <select
+                id="mode"
+                value={mode}
+                onChange={(e) => setMode(e.target.value as "daily" | "weekly" | "monthly")}
+                className="border border-[#2a2a2a] bg-[#111111] text-[#e6e6e6] rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#c9f24b] focus:border-[#c9f24b]"
+              >
+                <option value="daily">Harian</option>
+                <option value="weekly">Mingguan</option>
+                <option value="monthly">Bulanan</option>
+              </select>
               <label htmlFor="date" className="text-sm font-medium text-[#bfc5c9]">
                 Tanggal:
               </label>
@@ -73,6 +90,11 @@ export default function OutletsPage() {
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="border border-[#2a2a2a] bg-[#111111] text-[#e6e6e6] rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#c9f24b] focus:border-[#c9f24b]"
               />
+              {data?.period && (
+                <span className="text-xs text-[#9aa0a6]">
+                  {data.period.from} – {data.period.to}
+                </span>
+              )}
             </div>
           </div>
         </div>

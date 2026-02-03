@@ -1,19 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/lib/db/neon";
-import { getDateRange, isValidDateString } from "@/lib/utils/date";
+import {
+  getMonthRangeForDate,
+  getRangeTimestamps,
+  getWeekRangeForDate,
+  isValidDateString,
+} from "@/lib/utils/date";
 
 const QuerySchema = z.object({
   date: z.string().refine(isValidDateString, {
     message: "Format tanggal tidak valid. Gunakan YYYY-MM-DD",
   }),
+  mode: z.enum(["daily", "weekly", "monthly"]).optional(),
 });
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const date = searchParams.get("date");
-    const validation = QuerySchema.safeParse({ date });
+    const mode = searchParams.get("mode") ?? "daily";
+    const validation = QuerySchema.safeParse({ date, mode });
 
     if (!validation.success) {
       return NextResponse.json(
@@ -22,7 +29,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { startOfDay, endOfDay } = getDateRange(validation.data.date);
+    const period =
+      validation.data.mode === "weekly"
+        ? getWeekRangeForDate(validation.data.date)
+        : validation.data.mode === "monthly"
+        ? getMonthRangeForDate(validation.data.date)
+        : { from: validation.data.date, to: validation.data.date };
+    const { startOfRange, endOfRange } = getRangeTimestamps(
+      period.from,
+      period.to
+    );
     const sql = getDb();
 
     const rows = await sql`
@@ -38,8 +54,8 @@ export async function GET(request: NextRequest) {
       LEFT JOIN (
         SELECT outlet_id, COUNT(*) as visit_count
         FROM checkins
-        WHERE ts >= ${startOfDay}::timestamptz
-          AND ts <= ${endOfDay}::timestamptz
+        WHERE ts >= ${startOfRange}::timestamptz
+          AND ts <= ${endOfRange}::timestamptz
         GROUP BY outlet_id
       ) cv ON cv.outlet_id = o.id
       LEFT JOIN (
@@ -48,8 +64,8 @@ export async function GET(request: NextRequest) {
                COALESCE(SUM(qty), 0) as total_sales_qty,
                COUNT(*) as sales_count
         FROM sales
-        WHERE ts >= ${startOfDay}::timestamptz
-          AND ts <= ${endOfDay}::timestamptz
+        WHERE ts >= ${startOfRange}::timestamptz
+          AND ts <= ${endOfRange}::timestamptz
         GROUP BY outlet_id
       ) sa ON sa.outlet_id = o.id
       ORDER BY total_sales_amount DESC, visit_count DESC
@@ -67,7 +83,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: { date: validation.data.date, outlets },
+      data: { date: validation.data.date, period, outlets },
     });
   } catch (error) {
     console.error("Error analitik outlet:", error);

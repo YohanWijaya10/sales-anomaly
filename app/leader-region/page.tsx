@@ -43,18 +43,59 @@ function formatPercentage(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+function getTodayDate(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
 export default function LeaderRegionPage() {
-  const [range, setRange] = useState<"7d" | "30d">("7d");
+  const [mode, setMode] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [selectedDate, setSelectedDate] = useState(getTodayDate());
   const [data, setData] = useState<LeaderRegionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  function getWeekRange(dateStr: string): { from: string; to: string } {
+    const date = new Date(`${dateStr}T00:00:00.000Z`);
+    const day = date.getUTCDay(); // 0 = Sunday
+    const diffToMonday = (day + 6) % 7;
+    const start = new Date(date);
+    start.setUTCDate(start.getUTCDate() - diffToMonday);
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 6);
+    return {
+      from: start.toISOString().split("T")[0],
+      to: end.toISOString().split("T")[0],
+    };
+  }
+
+  function getMonthRange(dateStr: string): { from: string; to: string } {
+    const [year, month] = dateStr.split("-").map(Number);
+    const start = new Date(Date.UTC(year, month - 1, 1));
+    const end = new Date(Date.UTC(year, month, 0));
+    return {
+      from: start.toISOString().split("T")[0],
+      to: end.toISOString().split("T")[0],
+    };
+  }
 
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/analytics/leader-region?range=${range}`);
+        const query =
+          mode === "daily"
+            ? `date=${selectedDate}`
+            : mode === "weekly"
+            ? (() => {
+                const period = getWeekRange(selectedDate);
+                return `from=${period.from}&to=${period.to}`;
+              })()
+            : (() => {
+                const period = getMonthRange(selectedDate);
+                return `from=${period.from}&to=${period.to}`;
+              })();
+        const response = await fetch(`/api/analytics/leader-region?${query}`);
         const result = await response.json();
         if (!response.ok) {
           throw new Error(result.error || "Gagal mengambil data");
@@ -67,7 +108,7 @@ export default function LeaderRegionPage() {
       }
     }
     fetchData();
-  }, [range]);
+  }, [mode, selectedDate]);
 
   return (
     <div className="min-h-screen bg-[#0b0b0b]">
@@ -77,19 +118,30 @@ export default function LeaderRegionPage() {
             <h1 className="text-2xl font-bold text-[#e6e6e6]">
               Leader & Region
             </h1>
-            <div className="flex items-center gap-4">
-              <label htmlFor="range" className="text-sm font-medium text-[#bfc5c9]">
-                Range:
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+              <label htmlFor="mode" className="text-sm font-medium text-[#bfc5c9]">
+                Periode:
               </label>
               <select
-                id="range"
-                value={range}
-                onChange={(e) => setRange(e.target.value as "7d" | "30d")}
+                id="mode"
+                value={mode}
+                onChange={(e) => setMode(e.target.value as "daily" | "weekly" | "monthly")}
                 className="border border-[#2a2a2a] bg-[#111111] text-[#e6e6e6] rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#c9f24b] focus:border-[#c9f24b]"
               >
-                <option value="7d">7 hari</option>
-                <option value="30d">30 hari</option>
+                <option value="daily">Harian</option>
+                <option value="weekly">Mingguan</option>
+                <option value="monthly">Bulanan</option>
               </select>
+              <label htmlFor="date" className="text-sm font-medium text-[#bfc5c9]">
+                Tanggal:
+              </label>
+              <input
+                type="date"
+                id="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="border border-[#2a2a2a] bg-[#111111] text-[#e6e6e6] rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#c9f24b] focus:border-[#c9f24b]"
+              />
               {data?.period && (
                 <span className="text-xs text-[#9aa0a6]">
                   {data.period.from} – {data.period.to}
