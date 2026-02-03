@@ -182,12 +182,20 @@ const OUTLETS = [
   { id: "aaaaaa15-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT015", name: "Sejahtera Mart", lat: -6.2325, lng: 106.8585 },
 ];
 
-const SEED_BASE_DATE = "2026-02-05";
+const SEED_START_DATE = "2026-01-01";
+const SEED_END_DATE = "2026-02-05";
 
-function getDate(daysAgo: number, time: string): string {
-  const d = new Date(`${SEED_BASE_DATE}T00:00:00.000Z`);
-  d.setUTCDate(d.getUTCDate() - daysAgo);
+function getDate(daysFromStart: number, time: string): string {
+  const d = new Date(`${SEED_START_DATE}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + daysFromStart);
   return `${d.toISOString().split("T")[0]}T${time}:00.000Z`;
+}
+
+function getTotalDaysInclusive(): number {
+  const start = new Date(`${SEED_START_DATE}T00:00:00.000Z`);
+  const end = new Date(`${SEED_END_DATE}T00:00:00.000Z`);
+  const diffMs = end.getTime() - start.getTime();
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
 }
 
 async function seed() {
@@ -240,12 +248,13 @@ async function seed() {
   const eko = SALESMEN[4].id;
   const farhan = SALESMEN[5].id;
   const outletCount = OUTLETS.length;
+  const totalDays = getTotalDaysInclusive();
 
   let checkinCount = 0;
   let salesCount = 0;
 
   // ALICE - Normal performer (7 days)
-  for (let day = 6; day >= 0; day--) {
+  for (let day = 0; day < totalDays; day++) {
     const outlets = [0, 1, 2, 3, 4].map((i) => OUTLETS[(day + i) % outletCount].id);
     const times = ["09:00", "10:30", "12:00", "14:00", "15:30"];
 
@@ -272,7 +281,7 @@ async function seed() {
   }
 
   // BOB - Many visits, ZERO sales (triggers RF_LOW_EFFECTIVENESS)
-  for (let day = 6; day >= 0; day--) {
+  for (let day = 0; day < totalDays; day++) {
     const outlets = [0, 1, 2, 3, 4, 5].map((i) => OUTLETS[(day + i) % outletCount].id);
     const times = ["08:30", "09:30", "10:30", "13:00", "14:30", "16:00"];
 
@@ -287,7 +296,7 @@ async function seed() {
   }
 
   // CHARLIE - Low coverage, too consistent (triggers RF_LOW_COVERAGE + RF_TOO_CONSISTENT_7D)
-  for (let day = 6; day >= 0; day--) {
+  for (let day = 0; day < totalDays; day++) {
     // Always exactly 5 visits to same 2 outlets
     const outlet1 = OUTLETS[0].id;
     const outlet2 = OUTLETS[1].id;
@@ -317,7 +326,7 @@ async function seed() {
   }
 
   // DEWI - High performer, banyak kunjungan dan penjualan
-  for (let day = 6; day >= 0; day--) {
+  for (let day = 0; day < totalDays; day++) {
     const outlets = [0, 1, 2, 3, 4, 5].map((i) => OUTLETS[(day * 2 + i) % outletCount].id);
     const times = ["08:45", "09:45", "11:00", "13:00", "14:30", "16:00"];
 
@@ -343,7 +352,7 @@ async function seed() {
   }
 
   // EKO - Kunjungan sedikit tapi penjualan besar
-  for (let day = 6; day >= 0; day--) {
+  for (let day = 0; day < totalDays; day++) {
     const outlets = [0, 3, 6].map((i) => OUTLETS[(day + i) % outletCount].id);
     const times = ["10:00", "13:30", "15:45"];
 
@@ -367,7 +376,7 @@ async function seed() {
   }
 
   // FARHAN - Pola tidak stabil, kadang tanpa penjualan
-  for (let day = 6; day >= 0; day--) {
+  for (let day = 0; day < totalDays; day++) {
     const visitCount = 3 + (day % 3);
     const times = ["09:15", "10:45", "12:30", "14:15", "15:45"];
     const outlets = Array.from({ length: visitCount }, (_, i) => OUTLETS[(day * 3 + i) % outletCount].id);
@@ -396,7 +405,7 @@ async function seed() {
   // OTHER SALESMEN - Pola normal (4-5 kunjungan/hari, 1-3 transaksi)
   for (let sIndex = 6; sIndex < SALESMEN.length; sIndex++) {
     const salesman = SALESMEN[sIndex];
-    for (let day = 6; day >= 0; day--) {
+  for (let day = 0; day < totalDays; day++) {
       const visitCount = 4 + (day % 2);
       const times = ["09:10", "10:40", "12:10", "14:05", "15:35"];
       const outlets = Array.from(
