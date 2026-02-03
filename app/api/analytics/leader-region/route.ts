@@ -102,8 +102,8 @@ export async function GET(request: NextRequest) {
       total_sales_qty: Number(l.total_sales_qty || 0),
       outlet_with_sales_count: Number(l.outlet_with_sales_count || 0),
       conversion_rate:
-        Number(l.unique_outlet_count || 0) > 0
-          ? Number(l.outlet_with_sales_count || 0) / Number(l.unique_outlet_count || 0)
+        Number(l.visit_count || 0) > 0
+          ? Number(l.outlet_with_sales_count || 0) / Number(l.visit_count || 0)
           : 0,
     }));
 
@@ -118,8 +118,8 @@ export async function GET(request: NextRequest) {
       total_sales_qty: Number(r.total_sales_qty || 0),
       outlet_with_sales_count: Number(r.outlet_with_sales_count || 0),
       conversion_rate:
-        Number(r.unique_outlet_count || 0) > 0
-          ? Number(r.outlet_with_sales_count || 0) / Number(r.unique_outlet_count || 0)
+        Number(r.visit_count || 0) > 0
+          ? Number(r.outlet_with_sales_count || 0) / Number(r.visit_count || 0)
           : 0,
     }));
 

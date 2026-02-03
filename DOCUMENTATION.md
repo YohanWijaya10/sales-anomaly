@@ -55,8 +55,8 @@ Sumber: `sales-dashboard/lib/analytics/computeDailyMetrics.ts`
 - **total_sales_amount** = total `amount` dari `sales` di tanggal itu.
 - **total_sales_qty** = total `qty` dari `sales` di tanggal itu.
 - **outlet_with_sales_count** = jumlah outlet unik yang punya penjualan `amount > 0`.
-- **conversion_rate** = `outlet_with_sales_count / unique_outlet_count`.
-  - Jika `unique_outlet_count = 0`, hasil 0.
+- **conversion_rate** = `outlet_with_sales_count / visit_count`.
+  - Jika `visit_count = 0`, hasil 0.
 
 ### Agregat Harian
 - **total_visits** = sum `visit_count` semua sales.
@@ -108,7 +108,8 @@ Base: `/api`
 - `GET /api/insights/daily?date=YYYY-MM-DD`
   - Insight harian (LLM/fallback), plus cache.
 - `GET /api/insights/weekly`
-  - Insight mingguan untuk 7 hari terakhir (tanggal berdasarkan server time).
+  - Insight mingguan untuk **minggu lengkap Senin–Minggu**.
+  - Jika minggu berjalan belum lengkap, otomatis pakai minggu sebelumnya.
 
 ### Ingest
 - `POST /api/ingest/checkin`

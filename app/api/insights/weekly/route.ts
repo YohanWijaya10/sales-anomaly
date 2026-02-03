@@ -8,18 +8,27 @@ import {
   generateWeeklyFallbackInsight,
 } from "@/lib/deepseek/client";
 
-function getLast7DaysRange(): { from: string; to: string } {
-  const to = new Date();
-  const from = new Date();
-  from.setDate(from.getDate() - 6);
-  const toStr = to.toISOString().split("T")[0];
-  const fromStr = from.toISOString().split("T")[0];
+function getLastCompleteWeekRange(): { from: string; to: string } {
+  const today = new Date();
+  const utcDay = today.getUTCDay(); // 0 = Sunday
+  const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+
+  // Use last complete week (Mon-Sun). If today is Sunday, current week is complete.
+  if (utcDay !== 0) {
+    end.setUTCDate(end.getUTCDate() - utcDay);
+  }
+
+  const start = new Date(end);
+  start.setUTCDate(start.getUTCDate() - 6);
+
+  const toStr = end.toISOString().split("T")[0];
+  const fromStr = start.toISOString().split("T")[0];
   return { from: fromStr, to: toStr };
 }
 
 export async function GET(_request: NextRequest) {
   try {
-    const { from, to } = getLast7DaysRange();
+    const { from, to } = getLastCompleteWeekRange();
     const sql = getDb();
 
     const cached = await sql`

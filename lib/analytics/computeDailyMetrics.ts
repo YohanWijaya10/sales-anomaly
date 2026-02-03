@@ -90,9 +90,7 @@ export async function computeDailyMetricsForDate(
     const outlet_with_sales_count = outlets_with_sales.size;
 
     const conversion_rate =
-      unique_outlet_count > 0
-        ? outlet_with_sales_count / unique_outlet_count
-        : 0;
+      visit_count > 0 ? outlet_with_sales_count / visit_count : 0;
 
     salesmenMetrics.push({
       salesman_id: salesman.id,
@@ -227,9 +225,7 @@ export async function computeMetricsForSalesman(
     const outlet_with_sales_count = outlets_with_sales.size;
 
     const conversion_rate =
-      unique_outlet_count > 0
-        ? outlet_with_sales_count / unique_outlet_count
-        : 0;
+      visit_count > 0 ? outlet_with_sales_count / visit_count : 0;
 
     daily_metrics.push({
       salesman_id: salesman.id,
