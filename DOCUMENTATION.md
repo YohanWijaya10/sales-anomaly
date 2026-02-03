@@ -51,7 +51,6 @@ Sumber: `sales-dashboard/lib/analytics/computeDailyMetrics.ts`
 
 ### Per Sales (per hari)
 - **visit_count** = jumlah `checkins` sales di tanggal itu.
-- **unique_outlet_count** = jumlah outlet unik dari checkins.
 - **total_sales_amount** = total `amount` dari `sales` di tanggal itu.
 - **total_sales_qty** = total `qty` dari `sales` di tanggal itu.
 - **outlet_with_sales_count** = jumlah outlet unik yang punya penjualan `amount > 0`.
@@ -67,7 +66,6 @@ Sumber: `sales-dashboard/lib/analytics/computeDailyMetrics.ts`
 ### Agregat Per Sales (range tanggal)
 Sumber: `computeMetricsForSalesman`
 - **total_visits** = sum `visit_count` harian.
-- **total_unique_outlets** = nilai maksimum `unique_outlet_count` harian di rentang (bukan sum).
 - **total_sales_amount** = sum `total_sales_amount` harian.
 - **total_sales_qty** = sum `total_sales_qty` harian.
 - **avg_conversion_rate** = rata-rata `conversion_rate` pada hari yang punya visit.
@@ -76,9 +74,7 @@ Sumber: `computeMetricsForSalesman`
 Sumber: `sales-dashboard/lib/analytics/redFlags.ts`
 
 - **RF_LOW_EFFECTIVENESS (high)**
-  - Kondisi: `unique_outlet_count >= 5` dan `total_sales_amount = 0`.
-- **RF_LOW_COVERAGE (medium)**
-  - Kondisi: `visit_count >= 8` dan `unique_outlet_count <= 2`.
+  - Kondisi: `visit_count >= 5` dan `total_sales_amount = 0`.
 - **RF_TOO_CONSISTENT_7D (medium)**
   - Kondisi: dalam 7 hari terakhir, jumlah visit per hari sama semua dan `>= 5`.
 

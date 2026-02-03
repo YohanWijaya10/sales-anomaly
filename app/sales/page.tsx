@@ -115,9 +115,6 @@ export default function SalesPage() {
                       Kunjungan
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
-                      Outlet Unik
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
                       Nilai Penjualan
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
@@ -142,9 +139,6 @@ export default function SalesPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-[#e6e6e6]">
                         {sm.visit_count}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-[#e6e6e6]">
-                        {sm.unique_outlet_count}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-[#e6e6e6]">
                         {formatCurrency(sm.total_sales_amount)}

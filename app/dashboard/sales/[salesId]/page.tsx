@@ -206,18 +206,11 @@ export default function SalesmanDetailPage() {
         ) : data ? (
           <div className="space-y-6">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-[#151515] rounded-lg border border-[#222222] p-6">
                 <h3 className="text-sm font-medium text-[#9aa0a6]">Total Kunjungan</h3>
                 <p className="text-3xl font-bold text-[#e6e6e6] mt-2">
                   {data.totals.total_visits}
-                </p>
-              </div>
-
-              <div className="bg-[#151515] rounded-lg border border-[#222222] p-6">
-                <h3 className="text-sm font-medium text-[#9aa0a6]">Outlet Unik</h3>
-                <p className="text-3xl font-bold text-[#e6e6e6] mt-2">
-                  {data.totals.total_unique_outlets}
                 </p>
               </div>
 
@@ -291,9 +284,6 @@ export default function SalesmanDetailPage() {
                         Kunjungan
                       </th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
-                        Outlet Unik
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
                         Nilai Penjualan
                       </th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
@@ -333,9 +323,6 @@ export default function SalesmanDetailPage() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-[#e6e6e6]">
                               {dm.visit_count}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-[#e6e6e6]">
-                              {dm.unique_outlet_count}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-[#e6e6e6]">
                               {formatCurrency(dm.total_sales_amount)}

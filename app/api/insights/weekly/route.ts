@@ -37,15 +37,8 @@ export async function GET(_request: NextRequest) {
       LIMIT 1
     `;
 
-    if (cached.length > 0 && cached[0].payload_json) {
-      return NextResponse.json({
-        success: true,
-        cached: true,
-        from_llm: false,
-        data: cached[0].payload_json,
-        meta: { period: { from, to } },
-      });
-    }
+    const cachedInsight =
+      cached.length > 0 && cached[0].payload_json ? cached[0].payload_json : null;
 
     const dates = getDatesBetween(from, to);
 
@@ -56,6 +49,27 @@ export async function GET(_request: NextRequest) {
         return { date, metrics, redFlags };
       })
     );
+
+    const issuesMap = new Map<
+      string,
+      {
+        salesman_id: string;
+        salesman_code: string;
+        salesman_name: string;
+        total_flags: number;
+        severity_counts: { high: number; medium: number; low: number };
+        flags: Map<
+          string,
+          {
+            code: string;
+            title: string;
+            severity: "high" | "medium" | "low";
+            count: number;
+            reasons: Set<string>;
+          }
+        >;
+      }
+    >();
 
     const salesmenMap = new Map<
       string,
@@ -93,13 +107,72 @@ export async function GET(_request: NextRequest) {
       }
 
       for (const sr of day.redFlags) {
+        if (!issuesMap.has(sr.salesman_id)) {
+          issuesMap.set(sr.salesman_id, {
+            salesman_id: sr.salesman_id,
+            salesman_code: sr.salesman_code,
+            salesman_name: sr.salesman_name,
+            total_flags: 0,
+            severity_counts: { high: 0, medium: 0, low: 0 },
+            flags: new Map(),
+          });
+        }
+        const issueEntry = issuesMap.get(sr.salesman_id)!;
+
         for (const flag of sr.red_flags) {
           if (flag.severity === "high") redFlagCounts.high++;
           if (flag.severity === "medium") redFlagCounts.medium++;
           if (flag.severity === "low") redFlagCounts.low++;
+
+          issueEntry.total_flags++;
+          issueEntry.severity_counts[flag.severity]++;
+
+          if (!issueEntry.flags.has(flag.code)) {
+            issueEntry.flags.set(flag.code, {
+              code: flag.code,
+              title: flag.title,
+              severity: flag.severity,
+              count: 0,
+              reasons: new Set<string>(),
+            });
+          }
+          const flagEntry = issueEntry.flags.get(flag.code)!;
+          flagEntry.count++;
+          if (flag.reason) {
+            flagEntry.reasons.add(flag.reason);
+          }
         }
       }
     }
+
+    const severityWeight = { high: 3, medium: 2, low: 1 };
+    const issues = Array.from(issuesMap.values())
+      .map((entry) => ({
+        salesman_id: entry.salesman_id,
+        salesman_code: entry.salesman_code,
+        salesman_name: entry.salesman_name,
+        total_flags: entry.total_flags,
+        severity_counts: entry.severity_counts,
+        flags: Array.from(entry.flags.values()).map((f) => ({
+          code: f.code,
+          title: f.title,
+          severity: f.severity,
+          count: f.count,
+          reasons: Array.from(f.reasons).slice(0, 2),
+        })),
+      }))
+      .sort((a, b) => {
+        const aScore =
+          a.severity_counts.high * severityWeight.high +
+          a.severity_counts.medium * severityWeight.medium +
+          a.severity_counts.low * severityWeight.low;
+        const bScore =
+          b.severity_counts.high * severityWeight.high +
+          b.severity_counts.medium * severityWeight.medium +
+          b.severity_counts.low * severityWeight.low;
+        if (bScore !== aScore) return bScore - aScore;
+        return b.total_flags - a.total_flags;
+      });
 
     for (const entry of salesmenMap.values()) {
       if (entry.conversion_rates.length > 0) {
@@ -148,32 +221,40 @@ export async function GET(_request: NextRequest) {
 
     let insight;
     let fromLLM = false;
-    if (process.env.DEEPSEEK_API_KEY) {
+    let cachedHit = false;
+    if (cachedInsight) {
+      insight = cachedInsight;
+      cachedHit = true;
+    } else if (process.env.DEEPSEEK_API_KEY) {
       insight = await generateWeeklyInsight(input);
       fromLLM = true;
     } else {
       insight = generateWeeklyFallbackInsight(input);
     }
 
-    try {
-      await sql`
-        INSERT INTO weekly_insights_cache (period_from, period_to, payload_json)
-        VALUES (${from}, ${to}, ${JSON.stringify(insight)})
-        ON CONFLICT (period_from, period_to)
-        DO UPDATE SET payload_json = ${JSON.stringify(insight)}
-      `;
-    } catch (cacheError) {
-      console.error("Gagal menyimpan cache weekly insight:", cacheError);
+    if (!cachedHit) {
+      try {
+        await sql`
+          INSERT INTO weekly_insights_cache (period_from, period_to, payload_json)
+          VALUES (${from}, ${to}, ${JSON.stringify(insight)})
+          ON CONFLICT (period_from, period_to)
+          DO UPDATE SET payload_json = ${JSON.stringify(insight)}
+        `;
+      } catch (cacheError) {
+        console.error("Gagal menyimpan cache weekly insight:", cacheError);
+      }
     }
 
     return NextResponse.json({
       success: true,
+      cached: cachedHit,
       from_llm: fromLLM,
       data: insight,
       meta: {
         period: { from, to },
         totals: input.totals,
         red_flags: redFlagCounts,
+        issues,
       },
     });
   } catch (error) {

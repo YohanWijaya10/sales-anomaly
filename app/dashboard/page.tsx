@@ -49,6 +49,23 @@ interface WeeklyInsight {
   notes: string;
 }
 
+interface WeeklyIssueFlag {
+  code: string;
+  title: string;
+  severity: "low" | "medium" | "high";
+  count: number;
+  reasons: string[];
+}
+
+interface WeeklyIssue {
+  salesman_id: string;
+  salesman_code: string;
+  salesman_name: string;
+  total_flags: number;
+  severity_counts: { high: number; medium: number; low: number };
+  flags: WeeklyIssueFlag[];
+}
+
 interface LeaderRegionData {
   date: string;
   leaders: Array<{
@@ -117,6 +134,7 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
   const [data, setData] = useState<DailyData | null>(null);
   const [weeklyInsight, setWeeklyInsight] = useState<WeeklyInsight | null>(null);
+  const [weeklyIssues, setWeeklyIssues] = useState<WeeklyIssue[]>([]);
   const [weeklyLoading, setWeeklyLoading] = useState(true);
   const [weeklyError, setWeeklyError] = useState<string | null>(null);
   const [leaderRegion, setLeaderRegion] = useState<LeaderRegionData | null>(null);
@@ -163,6 +181,7 @@ export default function DashboardPage() {
         }
 
         setWeeklyInsight(result.data);
+        setWeeklyIssues(result.meta?.issues || []);
       } catch (err) {
         setWeeklyError(err instanceof Error ? err.message : "Terjadi kesalahan");
       } finally {
@@ -308,6 +327,7 @@ export default function DashboardPage() {
                       .then(({ ok, d }) => {
                         if (!ok) throw new Error(d.error || "Gagal mengambil laporan mingguan");
                         setWeeklyInsight(d.data);
+                        setWeeklyIssues(d.meta?.issues || []);
                       })
                       .catch((err) =>
                         setWeeklyError(err instanceof Error ? err.message : "Terjadi kesalahan")
@@ -364,6 +384,75 @@ export default function DashboardPage() {
                         ))}
                       </ul>
                     </div>
+                  </div>
+                  <div className="bg-[#0f0f0f] border border-[#222222] rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-medium text-[#e6e6e6]">Detail Insiden Mingguan</h3>
+                      <span className="text-xs text-[#9aa0a6]">
+                        {weeklyIssues.length} sales terdampak
+                      </span>
+                    </div>
+                    {weeklyIssues.length === 0 ? (
+                      <p className="text-sm text-[#9aa0a6]">
+                        Tidak ada insiden yang terdeteksi minggu ini.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {weeklyIssues.map((issue) => (
+                          <div
+                            key={issue.salesman_id}
+                            className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <div className="text-sm font-semibold text-[#e6e6e6]">
+                                  {issue.salesman_name}
+                                </div>
+                                <div className="text-xs text-[#9aa0a6]">
+                                  {issue.salesman_code}
+                                </div>
+                              </div>
+                              <div className="text-xs text-[#cfd4d8]">
+                                {issue.total_flags} insiden
+                              </div>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                              <span className="px-2 py-0.5 rounded-full bg-[#2a1111] text-[#ffb3b3] border border-[#5a1d1d]">
+                                High: {issue.severity_counts.high}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full bg-[#2a240f] text-[#f2d27a] border border-[#5a4a1d]">
+                                Medium: {issue.severity_counts.medium}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full bg-[#112329] text-[#8fd3ff] border border-[#1e3f4a]">
+                                Low: {issue.severity_counts.low}
+                              </span>
+                            </div>
+                            <div className="mt-3 space-y-2 text-sm text-[#cfd4d8]">
+                              {issue.flags.map((flag) => (
+                                <div
+                                  key={flag.code}
+                                  className="bg-[#101010] border border-[#222222] rounded-md p-2"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="font-medium">{flag.title}</div>
+                                    <div className="text-xs text-[#9aa0a6]">
+                                      {flag.count}x
+                                    </div>
+                                  </div>
+                                  {flag.reasons.length > 0 && (
+                                    <ul className="mt-1 text-xs text-[#9aa0a6] list-disc list-inside">
+                                      {flag.reasons.map((reason, idx) => (
+                                        <li key={idx}>{reason}</li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="bg-[#111111] border border-[#222222] rounded-lg p-4 text-sm text-[#cfd4d8]">
                     {weeklyInsight.detail}
@@ -722,9 +811,6 @@ export default function DashboardPage() {
                         Kunjungan
                       </th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
-                        Outlet Unik
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
                         Nilai Penjualan
                       </th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-[#9aa0a6] uppercase tracking-wider">
@@ -756,9 +842,6 @@ export default function DashboardPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-[#e6e6e6]">
                             {sm.visit_count}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-[#e6e6e6]">
-                            {sm.unique_outlet_count}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-[#e6e6e6]">
                             {formatCurrency(sm.total_sales_amount)}

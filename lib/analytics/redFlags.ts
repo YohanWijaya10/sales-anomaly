@@ -21,23 +21,13 @@ export interface SalesmanRedFlags {
 export function detectRedFlagsForMetrics(metrics: SalesmanMetrics): RedFlag[] {
   const flags: RedFlag[] = [];
 
-  // RF_LOW_EFFECTIVENESS: unique_outlet_count >= 5 AND total_sales_amount = 0
-  if (metrics.unique_outlet_count >= 5 && metrics.total_sales_amount === 0) {
+  // RF_LOW_EFFECTIVENESS: visit_count >= 5 AND total_sales_amount = 0
+  if (metrics.visit_count >= 5 && metrics.total_sales_amount === 0) {
     flags.push({
       code: "RF_LOW_EFFECTIVENESS",
       title: "Efektivitas Rendah",
       severity: "high",
-      reason: `Mengunjungi ${metrics.unique_outlet_count} outlet unik tetapi tidak ada penjualan. Pola ini perlu ditinjau.`,
-    });
-  }
-
-  // RF_LOW_COVERAGE: visit_count >= 8 AND unique_outlet_count <= 2
-  if (metrics.visit_count >= 8 && metrics.unique_outlet_count <= 2) {
-    flags.push({
-      code: "RF_LOW_COVERAGE",
-      title: "Cakupan Rendah",
-      severity: "medium",
-      reason: `Melakukan ${metrics.visit_count} kunjungan tetapi hanya ke ${metrics.unique_outlet_count} outlet unik. Pola cakupan perlu ditinjau.`,
+      reason: `Melakukan ${metrics.visit_count} kunjungan tetapi tidak ada penjualan. Pola ini perlu ditinjau.`,
     });
   }
 
