@@ -131,10 +131,12 @@ export default function ReportsPage() {
               </div>
               <div className="bg-[#112329] rounded-lg border border-[#1e3f4a] p-4">
                 <h3 className="font-medium text-[#8fd3ff] mb-2">Tindakan</h3>
-                <ul className="space-y-1 text-sm text-[#b5e2ff]">
+                <ul className="space-y-2 text-sm leading-relaxed text-[#b5e2ff]">
                   {daily.actions.map((a, i) => (
                     <li key={i} className="flex items-start">
-                      <span className="mr-2">-&gt;</span>
+                      <span className="mr-2 flex-none text-[#8fd3ff]" aria-hidden>
+                        →
+                      </span>
                       <span>{a}</span>
                     </li>
                   ))}
@@ -193,14 +195,16 @@ export default function ReportsPage() {
                 </div>
                 <div className="bg-[#112329] rounded-lg border border-[#1e3f4a] p-4">
                   <h3 className="font-medium text-[#8fd3ff] mb-2">Tindakan</h3>
-                  <ul className="space-y-1 text-sm text-[#b5e2ff]">
-                    {weekly.summary.actions.map((a, i) => (
-                      <li key={i} className="flex items-start">
-                        <span className="mr-2">-&gt;</span>
-                        <span>{a}</span>
-                      </li>
-                    ))}
-                  </ul>
+                <ul className="space-y-2 text-sm leading-relaxed text-[#b5e2ff]">
+                  {weekly.summary.actions.map((a, i) => (
+                    <li key={i} className="flex items-start">
+                      <span className="mr-2 flex-none text-[#8fd3ff]" aria-hidden>
+                        →
+                      </span>
+                      <span>{a}</span>
+                    </li>
+                  ))}
+                </ul>
                 </div>
               </div>
               <div className="bg-[#111111] border border-[#222222] rounded-lg p-4 text-sm text-[#cfd4d8]">

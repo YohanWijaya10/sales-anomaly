@@ -2,14 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  Legend,
-} from "recharts";
 
 interface SalesmanMetrics {
   salesman_id: string;
@@ -222,16 +214,6 @@ export default function DashboardPage() {
     low: "bg-[#112329] text-[#8fd3ff] border-[#1e3f4a]",
   };
 
-  const pieColors = ["#c9f24b", "#8fd3ff", "#f2d27a", "#ff8b8b", "#b18cff", "#7ef0c1"];
-
-  const contributionData =
-    data?.metrics?.salesmen_metrics
-      ?.filter((m) => Number(m.total_sales_amount || 0) > 0)
-      .map((m) => ({
-        name: m.salesman_name,
-        value: Number(m.total_sales_amount || 0),
-      })) || [];
-
   return (
     <div className="min-h-screen bg-[#0b0b0b]">
       <header className="bg-[#111111] border-b border-[#222222]">
@@ -382,7 +364,9 @@ export default function DashboardPage() {
                       <ul className="space-y-2 text-sm leading-relaxed text-[#b5e2ff]">
                         {weeklyInsight.summary.actions.map((a, i) => (
                           <li key={i} className="flex items-start">
-                            <span className="mr-2">-&gt;</span>
+                            <span className="mr-2 flex-none text-[#8fd3ff]" aria-hidden>
+                              →
+                            </span>
                             <span>{a}</span>
                           </li>
                         ))}
@@ -740,62 +724,6 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
-              </div>
-            </div>
-
-            {/* Kontribusi Penjualan */}
-            <div className="bg-[#151515] rounded-lg border border-[#222222] p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-[#e6e6e6]">
-                  Kontribusi Penjualan per Sales
-                </h2>
-                <span className="text-xs text-[#9aa0a6]">
-                  Total: {formatCurrency(data.metrics.total_sales_amount)}
-                </span>
-              </div>
-              <div className="h-64 sm:h-72">
-                {contributionData.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-[#9aa0a6]">
-                    Belum ada data penjualan
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={contributionData}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={70}
-                        outerRadius={110}
-                        paddingAngle={2}
-                        stroke="#0b0b0b"
-                      >
-                        {contributionData.map((_, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={pieColors[index % pieColors.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          background: "#151515",
-                          border: "1px solid #222222",
-                          color: "#ffffff",
-                        }}
-                        formatter={(value: number) => formatCurrency(Number(value))}
-                        labelStyle={{ color: "#ffffff" }}
-                        itemStyle={{ color: "#ffffff" }}
-                      />
-                      <Legend
-                        wrapperStyle={{ color: "#ffffff" }}
-                        formatter={(value: string) => (
-                          <span className="text-white">{value}</span>
-                        )}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
               </div>
             </div>
 
