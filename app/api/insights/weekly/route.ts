@@ -26,8 +26,9 @@ function getLastCompleteWeekRange(): { from: string; to: string } {
   return { from: fromStr, to: toStr };
 }
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
+    const refresh = request.nextUrl.searchParams.get("refresh") === "1";
     const { from, to } = getLastCompleteWeekRange();
     const sql = getDb();
 
@@ -38,7 +39,9 @@ export async function GET(_request: NextRequest) {
     `;
 
     const cachedInsight =
-      cached.length > 0 && cached[0].payload_json ? cached[0].payload_json : null;
+      !refresh && cached.length > 0 && cached[0].payload_json
+        ? cached[0].payload_json
+        : null;
 
     const dates = getDatesBetween(from, to);
 

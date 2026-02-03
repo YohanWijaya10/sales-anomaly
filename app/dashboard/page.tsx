@@ -322,7 +322,7 @@ export default function DashboardPage() {
                     setWeeklyInsight(null);
                     setWeeklyLoading(true);
                     setWeeklyError(null);
-                    fetch(`/api/insights/weekly`)
+                    fetch(`/api/insights/weekly?refresh=1`)
                       .then((r) => r.json().then((d) => ({ ok: r.ok, d })))
                       .then(({ ok, d }) => {
                         if (!ok) throw new Error(d.error || "Gagal mengambil laporan mingguan");
