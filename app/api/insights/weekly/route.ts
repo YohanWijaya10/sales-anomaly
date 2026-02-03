@@ -347,6 +347,21 @@ export async function GET(request: NextRequest) {
       .slice(0, 3);
 
     const { leaders, regions } = await getLeaderRegionSummary(from, to, sql);
+    const { regions: prevRegions } = await getLeaderRegionSummary(prevFrom, prevTo, sql);
+
+    const salesmanDealRows = await sql`
+      SELECT
+        salesman_id,
+        COUNT(DISTINCT outlet_id) FILTER (WHERE amount > 0) as outlet_with_sales_count
+      FROM sales
+      WHERE ts >= ${`${from}T00:00:00.000Z`}::timestamptz
+        AND ts <= ${`${to}T23:59:59.999Z`}::timestamptz
+      GROUP BY salesman_id
+    `;
+    const salesmanDealMap = new Map<string, number>();
+    for (const row of salesmanDealRows) {
+      salesmanDealMap.set(row.salesman_id, Number(row.outlet_with_sales_count || 0));
+    }
     const topLeadersBySales = leaders
       .slice()
       .sort((a, b) => b.total_sales_amount - a.total_sales_amount)
@@ -378,13 +393,15 @@ export async function GET(request: NextRequest) {
         const totals = salesmenMap.get(issue.salesman_id);
         const totalVisits = totals?.total_visits ?? 0;
         const totalSalesAmount = totals?.total_sales_amount ?? 0;
-        const conversionRate = totalVisits > 0 ? totalSalesAmount / totalVisits : 0;
+        const outletWithSalesCount = salesmanDealMap.get(issue.salesman_id) ?? 0;
+        const conversionRate = totalVisits > 0 ? outletWithSalesCount / totalVisits : 0;
         return {
           name: issue.salesman_name,
           count: issue.total_flags,
           visit_count_week: totalVisits,
           total_sales_amount: totalSalesAmount,
           conversion_rate: conversionRate,
+          outlet_with_sales_count: outletWithSalesCount,
         };
       })
       .filter(
@@ -393,6 +410,14 @@ export async function GET(request: NextRequest) {
           (p.total_sales_amount === 0 || p.conversion_rate < 0.3)
       )
       .slice(0, 3);
+
+    const salesPerformance = Array.from(salesmenMap.entries()).map(([salesmanId, s]) => ({
+      salesman_id: salesmanId,
+      name: s.name,
+      visit_count_week: s.total_visits,
+      total_sales_amount: s.total_sales_amount,
+      outlet_with_sales_count: salesmanDealMap.get(salesmanId) ?? 0,
+    }));
 
     const input = {
       period: { from, to },
@@ -425,6 +450,9 @@ export async function GET(request: NextRequest) {
           }
         : null,
       poorPerformers,
+      salesPerformance,
+      regions,
+      prev_regions: prevRegions,
       redFlagCounts,
     };
 
