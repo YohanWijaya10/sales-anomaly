@@ -170,8 +170,7 @@ export async function GET(request: NextRequest) {
     let totalSalesAmount = 0;
     let totalSalesQty = 0;
     let totalSalesmen = 0;
-    let conversionRateSum = 0;
-    let conversionRateCount = 0;
+    let totalOutletsWithSales = 0;
     const redFlagCounts = { high: 0, medium: 0, low: 0 };
 
     for (const day of perDay) {
@@ -181,6 +180,8 @@ export async function GET(request: NextRequest) {
       totalSalesmen = Math.max(totalSalesmen, day.metrics.total_salesmen);
 
       for (const m of day.metrics.salesmen_metrics) {
+        totalOutletsWithSales += m.outlet_with_sales_count;
+
         if (!salesmenMap.has(m.salesman_id)) {
           salesmenMap.set(m.salesman_id, {
             name: m.salesman_name,
@@ -240,8 +241,7 @@ export async function GET(request: NextRequest) {
     let prevTotalSalesAmount = 0;
     let prevTotalSalesQty = 0;
     let prevTotalSalesmen = 0;
-    let prevConversionRateSum = 0;
-    let prevConversionRateCount = 0;
+    let prevTotalOutletsWithSales = 0;
 
     for (const day of perDayPrev) {
       prevTotalVisits += day.metrics.total_visits;
@@ -249,15 +249,12 @@ export async function GET(request: NextRequest) {
       prevTotalSalesQty += day.metrics.total_sales_qty;
       prevTotalSalesmen = Math.max(prevTotalSalesmen, day.metrics.total_salesmen);
       for (const m of day.metrics.salesmen_metrics) {
-        if (m.visit_count > 0) {
-          prevConversionRateSum += m.conversion_rate;
-          prevConversionRateCount++;
-        }
+        prevTotalOutletsWithSales += m.outlet_with_sales_count;
       }
     }
 
     const prevAvgConversionRate =
-      prevConversionRateCount > 0 ? prevConversionRateSum / prevConversionRateCount : 0;
+      prevTotalVisits > 0 ? prevTotalOutletsWithSales / prevTotalVisits : 0;
 
     const severityWeight = { high: 3, medium: 2, low: 1 };
     const issues = Array.from(issuesMap.values())
@@ -288,18 +285,8 @@ export async function GET(request: NextRequest) {
         return b.total_flags - a.total_flags;
       });
 
-    for (const entry of salesmenMap.values()) {
-      if (entry.conversion_rates.length > 0) {
-        const avg =
-          entry.conversion_rates.reduce((sum, v) => sum + v, 0) /
-          entry.conversion_rates.length;
-        conversionRateSum += avg;
-        conversionRateCount++;
-      }
-    }
-
     const avgConversionRate =
-      conversionRateCount > 0 ? conversionRateSum / conversionRateCount : 0;
+      totalVisits > 0 ? totalOutletsWithSales / totalVisits : 0;
 
     const salesmenArray = Array.from(salesmenMap.values());
     const topBySales = salesmenArray

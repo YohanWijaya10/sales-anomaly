@@ -577,7 +577,6 @@ function normalizeWeeklyInsight(
       result.push("Tidak ada sales dengan konversi rendah (<30%) atau efektivitas rendah.");
     }
 
-    const overallAvg = context.totals.avg_conversion_rate;
     const lowRegions = (context.regions || [])
       .filter((r) => r.visit_count > 0 && r.conversion_rate < 0.3)
       .sort((a, b) => a.conversion_rate - b.conversion_rate)
@@ -587,9 +586,7 @@ function normalizeWeeklyInsight(
         `Konversi rendah per wilayah: ${lowRegions
           .map(
             (r) =>
-              `${r.name} ${formatPercentage(r.conversion_rate)} (${r.outlet_with_sales_count} deal dari ${r.visit_count} kunjungan), di bawah rata-rata keseluruhan ${formatPercentage(
-                overallAvg
-              )}`
+              `${r.name} ${formatPercentage(r.conversion_rate)} (${r.outlet_with_sales_count} deal dari ${r.visit_count} kunjungan)`
           )
           .join("; ")}.`
       );
