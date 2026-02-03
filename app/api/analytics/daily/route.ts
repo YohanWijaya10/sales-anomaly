@@ -1,21 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { computeDailyMetricsForDate } from "@/lib/analytics/computeDailyMetrics";
+import {
+  computeDailyMetricsForDate,
+  computeMetricsForRange,
+} from "@/lib/analytics/computeDailyMetrics";
 import { getAllRedFlagsForDate } from "@/lib/analytics/redFlags";
-import { isValidDateString } from "@/lib/utils/date";
+import {
+  getMonthRangeForDate,
+  getWeekRangeForDate,
+  isValidDateString,
+} from "@/lib/utils/date";
 
 const QuerySchema = z.object({
   date: z.string().refine(isValidDateString, {
     message: "Format tanggal tidak valid. Gunakan YYYY-MM-DD",
   }),
+  mode: z.enum(["daily", "weekly", "monthly"]).optional(),
 });
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const date = searchParams.get("date");
+    const mode = searchParams.get("mode") ?? "daily";
 
-    const validation = QuerySchema.safeParse({ date });
+    const validation = QuerySchema.safeParse({ date, mode });
 
     if (!validation.success) {
       return NextResponse.json(
@@ -24,11 +33,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const metrics = await computeDailyMetricsForDate(validation.data.date);
-    const redFlags = await getAllRedFlagsForDate(
-      validation.data.date,
-      metrics.salesmen_metrics
-    );
+    const period =
+      validation.data.mode === "weekly"
+        ? getWeekRangeForDate(validation.data.date)
+        : validation.data.mode === "monthly"
+        ? getMonthRangeForDate(validation.data.date)
+        : { from: validation.data.date, to: validation.data.date };
+
+    const metrics =
+      validation.data.mode === "daily"
+        ? await computeDailyMetricsForDate(validation.data.date)
+        : await computeMetricsForRange(period.from, period.to);
+
+    const redFlags =
+      validation.data.mode === "daily"
+        ? await getAllRedFlagsForDate(
+            validation.data.date,
+            metrics.salesmen_metrics
+          )
+        : [];
 
     // Compute rankings
     const sortedByConversion = [...metrics.salesmen_metrics]
@@ -75,6 +98,7 @@ export async function GET(request: NextRequest) {
         metrics,
         red_flags: redFlags,
         rankings,
+        period,
       },
     });
   } catch (error) {

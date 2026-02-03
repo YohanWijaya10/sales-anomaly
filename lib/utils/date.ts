@@ -2,6 +2,22 @@ export function formatDate(date: Date): string {
   return date.toISOString().split("T")[0];
 }
 
+function getUtcIsoForLocalDateTime(
+  dateStr: string,
+  hours: number,
+  minutes: number,
+  seconds: number,
+  ms: number
+): string {
+  const offsetMinutes = getBusinessTzOffsetMinutes();
+  const offsetMs = offsetMinutes * 60 * 1000;
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const utc = new Date(
+    Date.UTC(year, month - 1, day, hours, minutes, seconds, ms) - offsetMs
+  );
+  return utc.toISOString();
+}
+
 export function parseDate(dateStr: string): Date {
   const [year, month, day] = dateStr.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day));
@@ -22,14 +38,19 @@ export function getEndOfDay(date: Date): Date {
 export function getDateRange(
   date: string
 ): { startOfDay: string; endOfDay: string } {
-  const offsetMinutes = getBusinessTzOffsetMinutes();
-  const [year, month, day] = date.split("-").map(Number);
-  const offsetMs = offsetMinutes * 60 * 1000;
-  const startUtc = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0) - offsetMs);
-  const endUtc = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) - offsetMs);
   return {
-    startOfDay: startUtc.toISOString(),
-    endOfDay: endUtc.toISOString(),
+    startOfDay: getUtcIsoForLocalDateTime(date, 0, 0, 0, 0),
+    endOfDay: getUtcIsoForLocalDateTime(date, 23, 59, 59, 999),
+  };
+}
+
+export function getRangeTimestamps(
+  from: string,
+  to: string
+): { startOfRange: string; endOfRange: string } {
+  return {
+    startOfRange: getUtcIsoForLocalDateTime(from, 0, 0, 0, 0),
+    endOfRange: getUtcIsoForLocalDateTime(to, 23, 59, 59, 999),
   };
 }
 
@@ -91,6 +112,30 @@ export function getLastCompleteWeekRange(): { from: string; to: string } {
   return {
     from: startBiz.toISOString().split("T")[0],
     to: endBiz.toISOString().split("T")[0],
+  };
+}
+
+export function getWeekRangeForDate(dateStr: string): { from: string; to: string } {
+  const dateUtc = parseDate(dateStr);
+  const day = dateUtc.getUTCDay(); // 0 = Sunday
+  const diffToMonday = (day + 6) % 7;
+  const start = new Date(dateUtc);
+  start.setUTCDate(start.getUTCDate() - diffToMonday);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 6);
+  return {
+    from: start.toISOString().split("T")[0],
+    to: end.toISOString().split("T")[0],
+  };
+}
+
+export function getMonthRangeForDate(dateStr: string): { from: string; to: string } {
+  const [year, month] = dateStr.split("-").map(Number);
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 0));
+  return {
+    from: start.toISOString().split("T")[0],
+    to: end.toISOString().split("T")[0],
   };
 }
 

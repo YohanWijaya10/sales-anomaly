@@ -121,7 +121,16 @@ export async function GET(request: NextRequest) {
     const prevTo = shiftDate(to, -7);
     const sql = getDb();
 
-    const cachedInsight = null;
+    const cached = await sql`
+      SELECT payload_json FROM weekly_insights_cache
+      WHERE period_from = ${from} AND period_to = ${to}
+      LIMIT 1
+    `;
+
+    const cachedInsight =
+      !refresh && cached.length > 0 && cached[0].payload_json
+        ? cached[0].payload_json
+        : null;
 
     const dates = getDatesBetween(from, to);
     const prevDates = getDatesBetween(prevFrom, prevTo);
@@ -429,7 +438,18 @@ export async function GET(request: NextRequest) {
       insight = generateWeeklyFallbackInsight(input);
     }
 
-    // cache disabled temporarily for consistency with live data
+    if (!cachedHit) {
+      try {
+        await sql`
+          INSERT INTO weekly_insights_cache (period_from, period_to, payload_json)
+          VALUES (${from}, ${to}, ${JSON.stringify(insight)})
+          ON CONFLICT (period_from, period_to)
+          DO UPDATE SET payload_json = ${JSON.stringify(insight)}
+        `;
+      } catch (cacheError) {
+        console.error("Gagal menyimpan cache weekly insight:", cacheError);
+      }
+    }
 
     return NextResponse.json({
       success: true,

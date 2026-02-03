@@ -1,5 +1,5 @@
 import { getDb } from "@/lib/db/neon";
-import { getDateRange } from "@/lib/utils/date";
+import { getDateRange, getRangeTimestamps } from "@/lib/utils/date";
 
 export interface SalesmanMetrics {
   salesman_id: string;
@@ -125,6 +125,135 @@ export async function computeDailyMetricsForDate(
 
   return {
     date,
+    total_visits,
+    total_salesmen: salesmen.length,
+    total_sales_amount,
+    total_sales_qty,
+    avg_conversion_rate,
+    salesmen_metrics: salesmenMetrics,
+  };
+}
+
+export async function computeMetricsForRange(
+  from: string,
+  to: string
+): Promise<AggregatedMetrics> {
+  const sql = getDb();
+  const { startOfRange, endOfRange } = getRangeTimestamps(from, to);
+
+  const salesmen = await sql`
+    SELECT id, code, name FROM salesmen WHERE active = true
+  `;
+
+  if (!salesmen || salesmen.length === 0) {
+    return {
+      date: from,
+      total_visits: 0,
+      total_salesmen: 0,
+      total_sales_amount: 0,
+      total_sales_qty: 0,
+      avg_conversion_rate: 0,
+      salesmen_metrics: [],
+    };
+  }
+
+  const checkinRows = await sql`
+    SELECT
+      salesman_id,
+      COUNT(*) as visit_count,
+      COUNT(DISTINCT outlet_id) as unique_outlet_count
+    FROM checkins
+    WHERE ts >= ${startOfRange}::timestamptz
+      AND ts <= ${endOfRange}::timestamptz
+    GROUP BY salesman_id
+  `;
+
+  const salesRows = await sql`
+    SELECT
+      salesman_id,
+      COALESCE(SUM(amount), 0) as total_sales_amount,
+      COALESCE(SUM(qty), 0) as total_sales_qty,
+      COUNT(DISTINCT outlet_id) FILTER (WHERE amount > 0) as outlet_with_sales_count
+    FROM sales
+    WHERE ts >= ${startOfRange}::timestamptz
+      AND ts <= ${endOfRange}::timestamptz
+    GROUP BY salesman_id
+  `;
+
+  const checkinsMap = new Map<
+    string,
+    { visit_count: number; unique_outlet_count: number }
+  >();
+  for (const row of checkinRows) {
+    checkinsMap.set(row.salesman_id, {
+      visit_count: Number(row.visit_count || 0),
+      unique_outlet_count: Number(row.unique_outlet_count || 0),
+    });
+  }
+
+  const salesMap = new Map<
+    string,
+    {
+      total_sales_amount: number;
+      total_sales_qty: number;
+      outlet_with_sales_count: number;
+    }
+  >();
+  for (const row of salesRows) {
+    salesMap.set(row.salesman_id, {
+      total_sales_amount: Number(row.total_sales_amount || 0),
+      total_sales_qty: Number(row.total_sales_qty || 0),
+      outlet_with_sales_count: Number(row.outlet_with_sales_count || 0),
+    });
+  }
+
+  const salesmenMetrics: SalesmanMetrics[] = salesmen.map((salesman) => {
+    const checkins = checkinsMap.get(salesman.id) || {
+      visit_count: 0,
+      unique_outlet_count: 0,
+    };
+    const sales = salesMap.get(salesman.id) || {
+      total_sales_amount: 0,
+      total_sales_qty: 0,
+      outlet_with_sales_count: 0,
+    };
+    const conversion_rate =
+      checkins.visit_count > 0
+        ? sales.outlet_with_sales_count / checkins.visit_count
+        : 0;
+
+    return {
+      salesman_id: salesman.id,
+      salesman_code: salesman.code,
+      salesman_name: salesman.name,
+      date: from,
+      visit_count: checkins.visit_count,
+      unique_outlet_count: checkins.unique_outlet_count,
+      total_sales_amount: sales.total_sales_amount,
+      total_sales_qty: sales.total_sales_qty,
+      outlet_with_sales_count: sales.outlet_with_sales_count,
+      conversion_rate,
+    };
+  });
+
+  const total_visits = salesmenMetrics.reduce((sum, m) => sum + m.visit_count, 0);
+  const total_sales_amount = salesmenMetrics.reduce(
+    (sum, m) => sum + m.total_sales_amount,
+    0
+  );
+  const total_sales_qty = salesmenMetrics.reduce(
+    (sum, m) => sum + m.total_sales_qty,
+    0
+  );
+  const total_outlets_with_sales = salesmenMetrics.reduce(
+    (sum, m) => sum + m.outlet_with_sales_count,
+    0
+  );
+  const avg_conversion_rate =
+    total_visits > 0 ? total_outlets_with_sales / total_visits : 0;
+
+  return {
+    date: from,
     total_visits,
     total_salesmen: salesmen.length,
     total_sales_amount,
