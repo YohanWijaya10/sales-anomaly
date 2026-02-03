@@ -165,26 +165,28 @@ const REGIONS = [
 ];
 
 const OUTLETS = [
-  { id: "aaaaaaa1-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT001", name: "Toko Makmur Jaya" },
-  { id: "aaaaaaa2-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT002", name: "Warung Berkah" },
-  { id: "aaaaaaa3-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT003", name: "Sumber Rezeki" },
-  { id: "aaaaaaa4-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT004", name: "Toko Sentosa" },
-  { id: "aaaaaaa5-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT005", name: "Maju Bersama" },
-  { id: "aaaaaaa6-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT006", name: "Abadi Store" },
-  { id: "aaaaaaa7-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT007", name: "Harapan Jaya" },
-  { id: "aaaaaaa8-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT008", name: "Cahaya Mart" },
-  { id: "aaaaaaa9-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT009", name: "Prima Sejahtera" },
-  { id: "aaaaaa10-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT010", name: "Untung Selalu" },
-  { id: "aaaaaa11-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT011", name: "Sentral Grosir" },
-  { id: "aaaaaa12-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT012", name: "Bintang Baru" },
-  { id: "aaaaaa13-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT013", name: "Sinar Jaya" },
-  { id: "aaaaaa14-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT014", name: "Mitra Usaha" },
-  { id: "aaaaaa15-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT015", name: "Sejahtera Mart" },
+  { id: "aaaaaaa1-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT001", name: "Toko Makmur Jaya", lat: -6.2088, lng: 106.8456 },
+  { id: "aaaaaaa2-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT002", name: "Warung Berkah", lat: -6.212, lng: 106.851 },
+  { id: "aaaaaaa3-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT003", name: "Sumber Rezeki", lat: -6.215, lng: 106.842 },
+  { id: "aaaaaaa4-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT004", name: "Toko Sentosa", lat: -6.22, lng: 106.838 },
+  { id: "aaaaaaa5-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT005", name: "Maju Bersama", lat: -6.225, lng: 106.849 },
+  { id: "aaaaaaa6-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT006", name: "Abadi Store", lat: -6.23, lng: 106.855 },
+  { id: "aaaaaaa7-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT007", name: "Harapan Jaya", lat: -6.235, lng: 106.84 },
+  { id: "aaaaaaa8-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT008", name: "Cahaya Mart", lat: -6.24, lng: 106.847 },
+  { id: "aaaaaaa9-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT009", name: "Prima Sejahtera", lat: -6.245, lng: 106.853 },
+  { id: "aaaaaa10-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT010", name: "Untung Selalu", lat: -6.25, lng: 106.86 },
+  { id: "aaaaaa11-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT011", name: "Sentral Grosir", lat: -6.207, lng: 106.8525 },
+  { id: "aaaaaa12-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT012", name: "Bintang Baru", lat: -6.2135, lng: 106.8445 },
+  { id: "aaaaaa13-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT013", name: "Sinar Jaya", lat: -6.2185, lng: 106.8575 },
+  { id: "aaaaaa14-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT014", name: "Mitra Usaha", lat: -6.2265, lng: 106.8465 },
+  { id: "aaaaaa15-aaaa-aaaa-aaaa-aaaaaaaaaaaa", code: "OUT015", name: "Sejahtera Mart", lat: -6.2325, lng: 106.8585 },
 ];
 
+const SEED_BASE_DATE = "2026-02-05";
+
 function getDate(daysAgo: number, time: string): string {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
+  const d = new Date(`${SEED_BASE_DATE}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() - daysAgo);
   return `${d.toISOString().split("T")[0]}T${time}:00.000Z`;
 }
 
@@ -223,7 +225,8 @@ async function seed() {
   // Insert outlets
   console.log("5. Inserting outlets...");
   for (const o of OUTLETS) {
-    await sql`INSERT INTO outlets (id, code, name) VALUES (${o.id}, ${o.code}, ${o.name})`;
+    await sql`INSERT INTO outlets (id, code, name, lat, lng)
+      VALUES (${o.id}, ${o.code}, ${o.name}, ${o.lat}, ${o.lng})`;
   }
   console.log(`   ${OUTLETS.length} outlets inserted!\n`);
 
