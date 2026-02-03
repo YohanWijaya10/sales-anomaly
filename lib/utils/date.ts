@@ -4,7 +4,7 @@ export function formatDate(date: Date): string {
 
 export function parseDate(dateStr: string): Date {
   const [year, month, day] = dateStr.split("-").map(Number);
-  return new Date(year, month - 1, day);
+  return new Date(Date.UTC(year, month - 1, day));
 }
 
 export function getStartOfDay(date: Date): Date {
@@ -22,16 +22,23 @@ export function getEndOfDay(date: Date): Date {
 export function getDateRange(
   date: string
 ): { startOfDay: string; endOfDay: string } {
+  const offsetMinutes = getBusinessTzOffsetMinutes();
+  const [year, month, day] = date.split("-").map(Number);
+  const offsetMs = offsetMinutes * 60 * 1000;
+  const startUtc = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0) - offsetMs);
+  const endUtc = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) - offsetMs);
   return {
-    startOfDay: `${date}T00:00:00.000Z`,
-    endOfDay: `${date}T23:59:59.999Z`,
+    startOfDay: startUtc.toISOString(),
+    endOfDay: endUtc.toISOString(),
   };
 }
 
 export function getDaysAgo(days: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return formatDate(date);
+  const offsetMinutes = getBusinessTzOffsetMinutes();
+  const offsetMs = offsetMinutes * 60 * 1000;
+  const date = new Date(Date.now() + offsetMs);
+  date.setUTCDate(date.getUTCDate() - days);
+  return date.toISOString().split("T")[0];
 }
 
 export function getDatesBetween(from: string, to: string): string[] {
@@ -52,6 +59,39 @@ export function isValidDateString(dateStr: string): boolean {
   if (!regex.test(dateStr)) return false;
   const date = new Date(dateStr);
   return !isNaN(date.getTime());
+}
+
+const BUSINESS_TZ_OFFSET = process.env.BUSINESS_TZ_OFFSET || "+07:00";
+
+export function getBusinessTzOffsetMinutes(): number {
+  const match = BUSINESS_TZ_OFFSET.match(/^([+-])(\d{2}):?(\d{2})$/);
+  if (!match) return 0;
+  const sign = match[1] === "-" ? -1 : 1;
+  const hours = Number(match[2] || 0);
+  const minutes = Number(match[3] || 0);
+  return sign * (hours * 60 + minutes);
+}
+
+export function getLastCompleteWeekRange(): { from: string; to: string } {
+  const offsetMinutes = getBusinessTzOffsetMinutes();
+  const offsetMs = offsetMinutes * 60 * 1000;
+  const nowBiz = new Date(Date.now() + offsetMs);
+  const utcDay = nowBiz.getUTCDay(); // 0 = Sunday in business time
+  const endBiz = new Date(
+    Date.UTC(nowBiz.getUTCFullYear(), nowBiz.getUTCMonth(), nowBiz.getUTCDate())
+  );
+
+  if (utcDay !== 0) {
+    endBiz.setUTCDate(endBiz.getUTCDate() - utcDay);
+  }
+
+  const startBiz = new Date(endBiz);
+  startBiz.setUTCDate(startBiz.getUTCDate() - 6);
+
+  return {
+    from: startBiz.toISOString().split("T")[0],
+    to: endBiz.toISOString().split("T")[0],
+  };
 }
 
 export function formatCurrency(amount: number): string {

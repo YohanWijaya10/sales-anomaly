@@ -116,12 +116,12 @@ export async function computeDailyMetricsForDate(
     0
   );
 
-  const salesmenWithVisits = salesmenMetrics.filter((m) => m.visit_count > 0);
+  const total_outlets_with_sales = salesmenMetrics.reduce(
+    (sum, m) => sum + m.outlet_with_sales_count,
+    0
+  );
   const avg_conversion_rate =
-    salesmenWithVisits.length > 0
-      ? salesmenWithVisits.reduce((sum, m) => sum + m.conversion_rate, 0) /
-        salesmenWithVisits.length
-      : 0;
+    total_visits > 0 ? total_outlets_with_sales / total_visits : 0;
 
   return {
     date,
@@ -255,12 +255,12 @@ export async function computeMetricsForSalesman(
     0
   );
 
-  const daysWithVisits = daily_metrics.filter((m) => m.visit_count > 0);
+  const total_outlets_with_sales = daily_metrics.reduce(
+    (sum, m) => sum + m.outlet_with_sales_count,
+    0
+  );
   const avg_conversion_rate =
-    daysWithVisits.length > 0
-      ? daysWithVisits.reduce((sum, m) => sum + m.conversion_rate, 0) /
-        daysWithVisits.length
-      : 0;
+    total_visits > 0 ? total_outlets_with_sales / total_visits : 0;
 
   return {
     salesman: {

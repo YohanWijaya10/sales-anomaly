@@ -685,6 +685,7 @@ function normalizeWeeklyInsight(
   };
 
   const normalizedRisks = buildRisks();
+  const narratedRisks = normalizedRisks.map(narrateWeeklyRisk);
 
   const actionPattern = /risiko\s*[1-3]/i;
   const normalizedActions =
@@ -698,10 +699,57 @@ function normalizeWeeklyInsight(
     ...input,
     summary: {
       highlights: forcedHighlights,
-      risks: normalizedRisks,
+      risks: narratedRisks,
       actions: normalizedActions,
     },
   };
+}
+
+function narrateWeeklyRisk(risk: string): string {
+  const trimmed = risk.trim();
+  if (trimmed.startsWith("Sales dengan konversi rendah")) {
+    return trimmed.replace(
+      "Sales dengan konversi rendah (<30%):",
+      "Terdapat sales dengan konversi rendah (<30%), dengan rincian:"
+    );
+  }
+  if (trimmed.startsWith("Sales dengan efektivitas rendah")) {
+    return trimmed.replace(
+      "Sales dengan efektivitas rendah:",
+      "Beberapa sales belum menghasilkan penjualan; rincian:"
+    );
+  }
+  if (trimmed.startsWith("Konversi rendah per wilayah")) {
+    return trimmed.replace(
+      "Konversi rendah per wilayah:",
+      "Sejumlah wilayah menunjukkan konversi rendah; rincian:"
+    );
+  }
+  if (trimmed.startsWith("Wilayah dengan penurunan performa signifikan")) {
+    return trimmed.replace(
+      "Wilayah dengan penurunan performa signifikan:",
+      "Ada wilayah dengan penurunan performa signifikan; rincian:"
+    );
+  }
+  if (trimmed.startsWith("Penurunan total kunjungan")) {
+    return trimmed.replace(
+      "Penurunan total kunjungan:",
+      "Total kunjungan menurun; rincian:"
+    );
+  }
+  if (trimmed.startsWith("Penurunan konversi rata-rata")) {
+    return trimmed.replace(
+      "Penurunan konversi rata-rata:",
+      "Rata-rata konversi menurun; rincian:"
+    );
+  }
+  if (trimmed.startsWith("Penurunan total penjualan")) {
+    return trimmed.replace(
+      "Penurunan total penjualan:",
+      "Total penjualan melemah; rincian:"
+    );
+  }
+  return trimmed;
 }
 
 export function generateWeeklyFallbackInsight(input: {

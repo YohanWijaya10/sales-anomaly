@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDatesBetween } from "@/lib/utils/date";
+import { getDatesBetween, getLastCompleteWeekRange } from "@/lib/utils/date";
 import { computeDailyMetricsForDate } from "@/lib/analytics/computeDailyMetrics";
 import { getAllRedFlagsForDate } from "@/lib/analytics/redFlags";
 import { getDb } from "@/lib/db/neon";
@@ -7,24 +7,6 @@ import {
   generateWeeklyInsight,
   generateWeeklyFallbackInsight,
 } from "@/lib/deepseek/client";
-
-function getLastCompleteWeekRange(): { from: string; to: string } {
-  const today = new Date();
-  const utcDay = today.getUTCDay(); // 0 = Sunday
-  const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
-
-  // Use last complete week (Mon-Sun). If today is Sunday, current week is complete.
-  if (utcDay !== 0) {
-    end.setUTCDate(end.getUTCDate() - utcDay);
-  }
-
-  const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - 6);
-
-  const toStr = end.toISOString().split("T")[0];
-  const fromStr = start.toISOString().split("T")[0];
-  return { from: fromStr, to: toStr };
-}
 
 function shiftDate(dateStr: string, days: number): string {
   const d = new Date(`${dateStr}T00:00:00.000Z`);
@@ -139,16 +121,7 @@ export async function GET(request: NextRequest) {
     const prevTo = shiftDate(to, -7);
     const sql = getDb();
 
-    const cached = await sql`
-      SELECT payload_json FROM weekly_insights_cache
-      WHERE period_from = ${from} AND period_to = ${to}
-      LIMIT 1
-    `;
-
-    const cachedInsight =
-      !refresh && cached.length > 0 && cached[0].payload_json
-        ? cached[0].payload_json
-        : null;
+    const cachedInsight = null;
 
     const dates = getDatesBetween(from, to);
     const prevDates = getDatesBetween(prevFrom, prevTo);
@@ -469,18 +442,7 @@ export async function GET(request: NextRequest) {
       insight = generateWeeklyFallbackInsight(input);
     }
 
-    if (!cachedHit) {
-      try {
-        await sql`
-          INSERT INTO weekly_insights_cache (period_from, period_to, payload_json)
-          VALUES (${from}, ${to}, ${JSON.stringify(insight)})
-          ON CONFLICT (period_from, period_to)
-          DO UPDATE SET payload_json = ${JSON.stringify(insight)}
-        `;
-      } catch (cacheError) {
-        console.error("Gagal menyimpan cache weekly insight:", cacheError);
-      }
-    }
+    // cache disabled temporarily for consistency with live data
 
     return NextResponse.json({
       success: true,

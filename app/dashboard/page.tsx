@@ -197,7 +197,11 @@ export default function DashboardPage() {
       setLeaderRegionLoading(true);
       setLeaderRegionError(null);
       try {
-        const response = await fetch(`/api/analytics/leader-region?date=${selectedDate}`);
+        const weeklyPeriod = weeklyInsight?.period;
+        const query = weeklyPeriod
+          ? `from=${weeklyPeriod.from}&to=${weeklyPeriod.to}`
+          : `date=${selectedDate}`;
+        const response = await fetch(`/api/analytics/leader-region?${query}`);
         const result = await response.json();
         if (!response.ok) {
           throw new Error(result.error || "Gagal mengambil data leader/region");
@@ -210,7 +214,7 @@ export default function DashboardPage() {
       }
     }
     fetchLeaderRegion();
-  }, [selectedDate]);
+  }, [selectedDate, weeklyInsight?.period?.from, weeklyInsight?.period?.to]);
 
   const severityColors = {
     high: "bg-[#2a1111] text-[#ffb3b3] border-[#5a1d1d]",
