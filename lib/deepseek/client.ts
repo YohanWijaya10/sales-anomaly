@@ -31,6 +31,17 @@ export interface WeeklyInsight {
   notes: string;
 }
 
+export interface MonthlyInsight {
+  period: { from: string; to: string };
+  summary: {
+    highlights: string[];
+    risks: string[];
+    actions: string[];
+  };
+  detail: string;
+  notes: string;
+}
+
 export interface SalesPerformanceInsights {
   period: { from: string; to: string };
   insights: string[];
@@ -379,6 +390,145 @@ FORMAT OUTPUT (JSON ketat):
   "notes": "string tunggal untuk konteks tambahan"
 }
 
+export async function generateMonthlyInsight(input: {
+  period: { from: string; to: string };
+  totals: {
+    total_visits: number;
+    total_sales_amount: number;
+    total_sales_qty: number;
+    avg_conversion_rate: number;
+    total_salesmen: number;
+  };
+  prev_totals: {
+    total_visits: number;
+    total_sales_amount: number;
+    total_sales_qty: number;
+    avg_conversion_rate: number;
+    total_salesmen: number;
+    period: { from: string; to: string };
+  };
+  topBySales: Array<{ name: string; amount: number }>;
+  topByConversion: Array<{ name: string; rate: number }>;
+  topLeadersBySales: Array<{ name: string; amount: number }>;
+  topSalesmanBySales: { name: string; amount: number } | null;
+  topRegionByVisits: { name: string; visit_count: number } | null;
+  lowConversionRegion: {
+    name: string;
+    visit_count: number;
+    outlet_with_sales_count: number;
+    conversion_rate: number;
+  } | null;
+  poorPerformers: Array<{
+    name: string;
+    count: number;
+    visit_count_week: number;
+    total_sales_amount: number;
+    conversion_rate: number;
+    outlet_with_sales_count: number;
+  }>;
+  salesPerformance: Array<{
+    salesman_id: string;
+    name: string;
+    visit_count_week: number;
+    total_sales_amount: number;
+    outlet_with_sales_count: number;
+  }>;
+  regions: Array<{
+    id: string;
+    name: string;
+    visit_count: number;
+    total_sales_amount: number;
+    outlet_with_sales_count: number;
+    conversion_rate: number;
+  }>;
+  prev_regions: Array<{
+    id: string;
+    name: string;
+    visit_count: number;
+    total_sales_amount: number;
+    outlet_with_sales_count: number;
+    conversion_rate: number;
+  }>;
+  redFlagCounts: { high: number; medium: number; low: number };
+}): Promise<MonthlyInsight> {
+  const dataPrompt = buildWeeklyPrompt(input);
+
+  const systemPrompt = `Anda adalah asisten analitik sales. Buat laporan bulanan dengan format ringkas + detail.
+
+ATURAN PENTING:
+1. Keluarkan HANYA JSON yang valid dengan format yang persis seperti ditentukan
+2. Jangan menuduh siapa pun melakukan kecurangan atau pelanggaran
+3. Hindari kata "bendera" atau "red flag" dalam output
+4. Ringkas namun spesifik
+5. Ikuti definisi ketat Sorotan/Risiko/Tindakan di bawah
+
+FORMAT OUTPUT (JSON ketat):
+{
+  "period": { "from": "YYYY-MM-DD", "to": "YYYY-MM-DD" },
+  "summary": {
+    "highlights": ["array string berisi 5 poin sorotan"],
+    "risks": ["array string berisi 1-3 risiko"],
+    "actions": ["array string berisi 1-3 tindakan mitigasi"]
+  },
+  "detail": "paragraf singkat (3-5 kalimat) yang merangkum performa bulan ini",
+  "notes": "string tunggal untuk konteks tambahan"
+}
+
+DEFINISI KETAT:
+- Sorotan: HANYA laporan fakta (metrik, top performer, deskripsi kejadian). Tidak boleh berisi risiko, saran, atau prediksi.
+- Risiko: HANYA hal yang dapat menyebabkan kerugian bisnis dalam 30 hari ke depan. Maks 1 risiko utama + 2 risiko sekunder.
+- Tindakan: HANYA langkah mitigasi yang secara langsung menjawab risiko yang disebutkan. Tidak boleh ada aksi yang tidak terkait risiko.
+- Setiap tindakan WAJIB menyebut target risiko (contoh: "Mitigasi Risiko 1: ...").
+- Format Risiko Utama WAJIB satu kalimat: "[WHAT], which may [BUSINESS IMPACT], if not addressed within [TIMEFRAME]."
+- Risiko sekunder boleh singkat tanpa penjelasan.
+- Jika tidak ada risiko valid, isi risks dengan: ["Tidak ada risiko kritis bulan ini."] dan actions harus [].
+
+FORMAT SOROTAN (WAJIB 5 poin, urutan tetap):
+1) Total penjualan + unit terjual, bandingkan dengan bulan sebelumnya.
+2) Rata-rata konversi, bandingkan dengan bulan sebelumnya.
+3) Performa leader terbaik (sebutkan nama).
+4) Sales dengan performa terbaik (sebutkan nama).
+5) Daerah (region) dengan kunjungan paling ramai.
+`;
+
+  const userPrompt = `Analisis data bulanan berikut dan buat laporan sesuai format JSON:
+
+${dataPrompt}
+
+Patuhi DEFINISI KETAT. Pastikan:
+- Sorotan hanya fakta.
+- Risiko hanya risiko berdampak 30 hari ke depan, bukan peluang.
+- Tindakan harus langsung merespons Risiko dan menyebut "Risiko 1/2/3".
+- Risiko utama harus satu kalimat dengan format: "[WHAT], which may [BUSINESS IMPACT], if not addressed within [TIMEFRAME]."
+- Sorotan harus mengikuti urutan 1-5 sesuai FORMAT SOROTAN dan menyertakan perbandingan vs bulan sebelumnya.
+`;
+
+  try {
+    const response = await callDeepSeek([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ]);
+
+    const parsed = JSON.parse(response) as MonthlyInsight;
+
+    if (
+      !parsed.period ||
+      !parsed.summary ||
+      !Array.isArray(parsed.summary.highlights) ||
+      !Array.isArray(parsed.summary.risks) ||
+      !Array.isArray(parsed.summary.actions) ||
+      typeof parsed.detail !== "string" ||
+      typeof parsed.notes !== "string"
+    ) {
+      throw new Error("Invalid response structure");
+    }
+
+    return normalizeMonthlyInsight(parsed, input);
+  } catch {
+    return generateMonthlyFallbackInsight(input);
+  }
+}
+
 DEFINISI KETAT:
 - Sorotan: HANYA laporan fakta (metrik, top performer, deskripsi kejadian). Tidak boleh berisi risiko, saran, atau prediksi.
 - Risiko: HANYA hal yang dapat menyebabkan kerugian bisnis dalam 30 hari ke depan. Maks 1 risiko utama + 2 risiko sekunder.
@@ -488,6 +638,70 @@ function buildWeeklyHighlights(input: {
   const topRegionHighlight = input.topRegionByVisits
     ? `Daerah paling ramai minggu ini: ${input.topRegionByVisits.name}.`
     : "Belum ada data kunjungan region yang dominan minggu ini.";
+
+  return [
+    salesHighlight,
+    conversionHighlight,
+    leaderHighlight,
+    topSalesHighlight,
+    topRegionHighlight,
+  ];
+}
+
+function buildMonthlyHighlights(input: {
+  totals: {
+    total_sales_amount: number;
+    total_sales_qty: number;
+    avg_conversion_rate: number;
+  };
+  prev_totals: {
+    total_sales_amount: number;
+    total_sales_qty: number;
+    avg_conversion_rate: number;
+  };
+  topLeadersBySales: Array<{ name: string; amount: number }>;
+  topSalesmanBySales: { name: string; amount: number } | null;
+  topRegionByVisits: { name: string; visit_count: number } | null;
+}): string[] {
+  const trendLabel = (current: number, prev: number) => {
+    if (current > prev) return "naik";
+    if (current < prev) return "turun";
+    return "stabil";
+  };
+
+  const totalSalesTrend = trendLabel(
+    input.totals.total_sales_amount,
+    input.prev_totals.total_sales_amount,
+  );
+  const salesHighlight = `Total penjualan ${formatCurrency(
+    input.totals.total_sales_amount,
+  )} dengan ${input.totals.total_sales_qty} unit terjual, ${totalSalesTrend} dibanding bulan lalu (${formatCurrency(
+    input.prev_totals.total_sales_amount,
+  )} dan ${input.prev_totals.total_sales_qty} unit).`;
+
+  const conversionTrend = trendLabel(
+    input.totals.avg_conversion_rate,
+    input.prev_totals.avg_conversion_rate,
+  );
+  const conversionHighlight = `Rata-rata konversi ${formatPercentage(
+    input.totals.avg_conversion_rate,
+  )}, ${conversionTrend} dibanding bulan lalu (${formatPercentage(
+    input.prev_totals.avg_conversion_rate,
+  )}).`;
+
+  const leaderNames =
+    input.topLeadersBySales.length > 0
+      ? input.topLeadersBySales.map((l) => l.name).join(" dan ")
+      : "Belum ada leader dengan kontribusi penjualan signifikan";
+  const leaderHighlight = `Performa leader terbaik bulan ini: ${leaderNames}.`;
+
+  const topSalesHighlight = input.topSalesmanBySales
+    ? `Sales dengan performa terbaik: ${input.topSalesmanBySales.name}.`
+    : "Belum ada sales dengan performa penjualan menonjol bulan ini.";
+
+  const topRegionHighlight = input.topRegionByVisits
+    ? `Daerah paling ramai bulan ini: ${input.topRegionByVisits.name}.`
+    : "Belum ada data kunjungan region yang dominan bulan ini.";
 
   return [
     salesHighlight,
@@ -753,6 +967,255 @@ function normalizeWeeklyInsight(
   };
 }
 
+function normalizeMonthlyInsight(
+  input: MonthlyInsight,
+  context: {
+    totals: {
+      total_visits: number;
+      total_sales_amount: number;
+      total_sales_qty: number;
+      avg_conversion_rate: number;
+    };
+    prev_totals: {
+      total_visits: number;
+      total_sales_amount: number;
+      total_sales_qty: number;
+      avg_conversion_rate: number;
+    };
+    topLeadersBySales: Array<{ name: string; amount: number }>;
+    topSalesmanBySales: { name: string; amount: number } | null;
+    topRegionByVisits: { name: string; visit_count: number } | null;
+    lowConversionRegion: {
+      name: string;
+      visit_count: number;
+      outlet_with_sales_count: number;
+      conversion_rate: number;
+    } | null;
+    poorPerformers: Array<{ name: string; count: number }>;
+    salesPerformance: Array<{
+      salesman_id: string;
+      name: string;
+      visit_count_week: number;
+      total_sales_amount: number;
+      outlet_with_sales_count: number;
+    }>;
+    regions: Array<{
+      id: string;
+      name: string;
+      visit_count: number;
+      total_sales_amount: number;
+      outlet_with_sales_count: number;
+      conversion_rate: number;
+    }>;
+    prev_regions: Array<{
+      id: string;
+      name: string;
+      visit_count: number;
+      total_sales_amount: number;
+      outlet_with_sales_count: number;
+      conversion_rate: number;
+    }>;
+  },
+): MonthlyInsight {
+  const forbiddenRiskKeywords = [
+    "peluang",
+    "opportunity",
+    "optimasi",
+    "optimalisasi",
+    "growth",
+    "pertumbuhan",
+    "eksplorasi",
+    "potensi",
+  ];
+  const isValidRisk = (risk: string) =>
+    !forbiddenRiskKeywords.some((k) => risk.toLowerCase().includes(k));
+
+  const risks = Array.isArray(input.summary?.risks) ? input.summary.risks : [];
+  const actions = Array.isArray(input.summary?.actions)
+    ? input.summary.actions
+    : [];
+
+  const buildRisks = (): string[] => {
+    const result: string[] = [];
+
+    const salesPerf = context.salesPerformance || [];
+    const lowConversionSales = salesPerf
+      .filter((s) => s.visit_count_week > 0)
+      .map((s) => ({
+        ...s,
+        conversion_rate:
+          s.visit_count_week > 0
+            ? s.outlet_with_sales_count / s.visit_count_week
+            : 0,
+      }))
+      .filter((s) => s.conversion_rate < 0.3)
+      .sort((a, b) => a.conversion_rate - b.conversion_rate)
+      .slice(0, 3);
+
+    const zeroSales = salesPerf
+      .filter((s) => s.visit_count_week > 0 && s.total_sales_amount === 0)
+      .slice(0, 2);
+
+    if (lowConversionSales.length > 0 || zeroSales.length > 0) {
+      const parts: string[] = [];
+
+      if (zeroSales.length > 0) {
+        const names = zeroSales.map((s) => s.name);
+        if (zeroSales.length === 1) {
+          parts.push(
+            `${names[0]} perlu perhatian khusus karena dari ${zeroSales[0].visit_count_week} kunjungan belum ada yang berhasil closing`,
+          );
+        } else {
+          parts.push(
+            `${names.join(" dan ")} belum menghasilkan deal sama sekali meski sudah melakukan banyak kunjungan`,
+          );
+        }
+      }
+
+      const otherLowConv = lowConversionSales.filter(
+        (s) => !zeroSales.some((z) => z.name === s.name),
+      );
+      if (otherLowConv.length > 0) {
+        const convTexts = otherLowConv.map(
+          (s) =>
+            `${s.name} hanya ${s.outlet_with_sales_count} deal dari ${s.visit_count_week} kunjungan`,
+        );
+        parts.push(convTexts.join(", "));
+      }
+
+      result.push(parts.join(". ") + ".");
+    }
+
+    const lowRegions = (context.regions || [])
+      .filter((r) => r.visit_count > 0 && r.conversion_rate < 0.3)
+      .sort((a, b) => a.conversion_rate - b.conversion_rate)
+      .slice(0, 2);
+
+    if (lowRegions.length > 0) {
+      if (lowRegions.length === 1) {
+        const r = lowRegions[0];
+        result.push(
+          `Wilayah ${r.name} masih jadi tantangan dengan tingkat closing hanya ${formatPercentage(r.conversion_rate)} (${r.outlet_with_sales_count} deal dari ${r.visit_count} kunjungan).`,
+        );
+      } else {
+        const regionTexts = lowRegions.map(
+          (r) => `${r.name} (${formatPercentage(r.conversion_rate)})`,
+        );
+        result.push(
+          `${regionTexts.join(" dan ")} masih perlu perbaikan strategi karena tingkat closing-nya di bawah 30%.`,
+        );
+      }
+    }
+
+    const prevRegionMap = new Map(
+      (context.prev_regions || []).map((r) => [r.id, r]),
+    );
+    const decliningRegions = (context.regions || [])
+      .map((r) => {
+        const prev = prevRegionMap.get(r.id);
+        if (!prev || prev.total_sales_amount <= 0) return null;
+        const dropPct =
+          ((prev.total_sales_amount - r.total_sales_amount) /
+            prev.total_sales_amount) *
+          100;
+        return {
+          id: r.id,
+          name: r.name,
+          prevSales: prev.total_sales_amount,
+          currentSales: r.total_sales_amount,
+          dropPct,
+        };
+      })
+      .filter((r): r is NonNullable<typeof r> => !!r && r.dropPct >= 20)
+      .sort((a, b) => b.dropPct - a.dropPct)
+      .slice(0, 2);
+
+    if (decliningRegions.length > 0) {
+      if (decliningRegions.length === 1) {
+        const r = decliningRegions[0];
+        result.push(
+          `Penjualan di ${r.name} turun ${r.dropPct.toFixed(0)}% dibanding bulan lalu, dari ${formatCurrency(r.prevSales)} menjadi ${formatCurrency(r.currentSales)}.`,
+        );
+      } else {
+        const texts = decliningRegions.map(
+          (r) => `${r.name} turun ${r.dropPct.toFixed(0)}%`,
+        );
+        result.push(
+          `Beberapa wilayah mengalami penurunan penjualan yang cukup signifikan: ${texts.join(" dan ")}.`,
+        );
+      }
+    }
+
+    if (
+      context.prev_totals.total_visits > 0 &&
+      context.totals.total_visits < context.prev_totals.total_visits
+    ) {
+      const drop =
+        ((context.prev_totals.total_visits - context.totals.total_visits) /
+          context.prev_totals.total_visits) *
+        100;
+      result.push(
+        `Aktivitas kunjungan menurun ${drop.toFixed(0)}% dari bulan sebelumnya (${context.prev_totals.total_visits} → ${context.totals.total_visits} kunjungan), ini bisa berdampak pada pipeline penjualan.`,
+      );
+    }
+
+    if (
+      context.totals.avg_conversion_rate <
+      context.prev_totals.avg_conversion_rate
+    ) {
+      const dropPp =
+        (context.prev_totals.avg_conversion_rate -
+          context.totals.avg_conversion_rate) *
+        100;
+      if (dropPp >= 1) {
+        result.push(
+          `Rata-rata closing rate turun ${dropPp.toFixed(1)} poin dari ${formatPercentage(context.prev_totals.avg_conversion_rate)} menjadi ${formatPercentage(context.totals.avg_conversion_rate)}.`,
+        );
+      }
+    }
+
+    if (
+      context.totals.total_sales_amount < context.prev_totals.total_sales_amount
+    ) {
+      const dropValue =
+        context.prev_totals.total_sales_amount -
+        context.totals.total_sales_amount;
+      const dropPct =
+        (dropValue / context.prev_totals.total_sales_amount) * 100;
+      result.push(
+        `Total penjualan bulan ini lebih rendah ${formatCurrency(dropValue)} (${dropPct.toFixed(1)}%) dibanding bulan lalu.`,
+      );
+    }
+
+    const filtered = result.filter((r) => isValidRisk(r));
+    return filtered.length > 0
+      ? filtered
+      : [
+          "Secara umum performa bulan ini cukup stabil tanpa risiko yang signifikan.",
+        ];
+  };
+
+  const normalizedRisks = buildRisks();
+
+  const actionPattern = /risiko\s*[1-3]/i;
+  const normalizedActions =
+    normalizedRisks[0] ===
+    "Secara umum performa bulan ini cukup stabil tanpa risiko yang signifikan."
+      ? []
+      : actions.filter((a) => actionPattern.test(a)).slice(0, 3);
+
+  const forcedHighlights = buildMonthlyHighlights(context);
+
+  return {
+    ...input,
+    summary: {
+      highlights: forcedHighlights,
+      risks: normalizedRisks,
+      actions: normalizedActions,
+    },
+  };
+}
+
 export function generateWeeklyFallbackInsight(input: {
   period: { from: string; to: string };
   totals: {
@@ -839,6 +1302,115 @@ export function generateWeeklyFallbackInsight(input: {
   };
 
   return normalizeWeeklyInsight(baseInsight, {
+    totals: {
+      total_visits: input.totals.total_visits,
+      total_sales_amount: input.totals.total_sales_amount,
+      total_sales_qty: input.totals.total_sales_qty,
+      avg_conversion_rate: input.totals.avg_conversion_rate,
+    },
+    prev_totals: {
+      total_visits: input.prev_totals.total_visits,
+      total_sales_amount: input.prev_totals.total_sales_amount,
+      total_sales_qty: input.prev_totals.total_sales_qty,
+      avg_conversion_rate: input.prev_totals.avg_conversion_rate,
+    },
+    topLeadersBySales: input.topLeadersBySales,
+    topSalesmanBySales: input.topSalesmanBySales,
+    topRegionByVisits: input.topRegionByVisits,
+    lowConversionRegion: input.lowConversionRegion,
+    poorPerformers: input.poorPerformers,
+    salesPerformance: input.salesPerformance,
+    regions: input.regions,
+    prev_regions: input.prev_regions,
+  });
+}
+
+export function generateMonthlyFallbackInsight(input: {
+  period: { from: string; to: string };
+  totals: {
+    total_visits: number;
+    total_sales_amount: number;
+    total_sales_qty: number;
+    avg_conversion_rate: number;
+    total_salesmen: number;
+  };
+  prev_totals: {
+    total_visits: number;
+    total_sales_amount: number;
+    total_sales_qty: number;
+    avg_conversion_rate: number;
+    total_salesmen: number;
+    period: { from: string; to: string };
+  };
+  topBySales: Array<{ name: string; amount: number }>;
+  topByConversion: Array<{ name: string; rate: number }>;
+  topLeadersBySales: Array<{ name: string; amount: number }>;
+  topSalesmanBySales: { name: string; amount: number } | null;
+  topRegionByVisits: { name: string; visit_count: number } | null;
+  lowConversionRegion: {
+    name: string;
+    visit_count: number;
+    outlet_with_sales_count: number;
+    conversion_rate: number;
+  } | null;
+  poorPerformers: Array<{
+    name: string;
+    count: number;
+    visit_count_week: number;
+    total_sales_amount: number;
+    conversion_rate: number;
+    outlet_with_sales_count: number;
+  }>;
+  salesPerformance: Array<{
+    salesman_id: string;
+    name: string;
+    visit_count_week: number;
+    total_sales_amount: number;
+    outlet_with_sales_count: number;
+  }>;
+  regions: Array<{
+    id: string;
+    name: string;
+    visit_count: number;
+    total_sales_amount: number;
+    outlet_with_sales_count: number;
+    conversion_rate: number;
+  }>;
+  prev_regions: Array<{
+    id: string;
+    name: string;
+    visit_count: number;
+    total_sales_amount: number;
+    outlet_with_sales_count: number;
+    conversion_rate: number;
+  }>;
+  redFlagCounts: { high: number; medium: number; low: number };
+}): MonthlyInsight {
+  const highlights = buildMonthlyHighlights({
+    totals: {
+      total_sales_amount: input.totals.total_sales_amount,
+      total_sales_qty: input.totals.total_sales_qty,
+      avg_conversion_rate: input.totals.avg_conversion_rate,
+    },
+    prev_totals: {
+      total_sales_amount: input.prev_totals.total_sales_amount,
+      total_sales_qty: input.prev_totals.total_sales_qty,
+      avg_conversion_rate: input.prev_totals.avg_conversion_rate,
+    },
+    topLeadersBySales: input.topLeadersBySales,
+    topSalesmanBySales: input.topSalesmanBySales,
+    topRegionByVisits: input.topRegionByVisits,
+  });
+
+  const baseInsight: MonthlyInsight = {
+    period: input.period,
+    summary: { highlights, risks: [], actions: [] },
+    detail:
+      "Secara umum performa bulan ini stabil dengan kontribusi utama dari beberapa sales teratas. Rata-rata konversi dan volume kunjungan bergerak sejalan dengan distribusi aktivitas sales selama periode ini.",
+    notes: "Laporan ini dihasilkan otomatis dari data bulanan.",
+  };
+
+  return normalizeMonthlyInsight(baseInsight, {
     totals: {
       total_visits: input.totals.total_visits,
       total_sales_amount: input.totals.total_sales_amount,

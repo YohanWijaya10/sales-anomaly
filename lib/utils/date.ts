@@ -139,6 +139,24 @@ export function getMonthRangeForDate(dateStr: string): { from: string; to: strin
   };
 }
 
+export function getLastCompleteMonthRange(): { from: string; to: string } {
+  const offsetMinutes = getBusinessTzOffsetMinutes();
+  const offsetMs = offsetMinutes * 60 * 1000;
+  const nowBiz = new Date(Date.now() + offsetMs);
+  const firstOfThisMonth = new Date(
+    Date.UTC(nowBiz.getUTCFullYear(), nowBiz.getUTCMonth(), 1),
+  );
+  const endOfLastMonth = new Date(firstOfThisMonth);
+  endOfLastMonth.setUTCDate(endOfLastMonth.getUTCDate() - 1);
+  const year = endOfLastMonth.getUTCFullYear();
+  const month = endOfLastMonth.getUTCMonth();
+  const startOfLastMonth = new Date(Date.UTC(year, month, 1));
+  return {
+    from: startOfLastMonth.toISOString().split("T")[0],
+    to: endOfLastMonth.toISOString().split("T")[0],
+  };
+}
+
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",

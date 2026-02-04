@@ -13,6 +13,17 @@ interface WeeklyInsight {
   notes: string;
 }
 
+interface MonthlyInsight {
+  period: { from: string; to: string };
+  summary: {
+    highlights: string[];
+    risks: string[];
+    actions: string[];
+  };
+  detail: string;
+  notes: string;
+}
+
 interface DailyInsight {
   date: string;
   highlights: string[];
@@ -34,6 +45,10 @@ export default function ReportsPage() {
   const [weekly, setWeekly] = useState<WeeklyInsight | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [monthly, setMonthly] = useState<MonthlyInsight | null>(null);
+  const [monthlyLoading, setMonthlyLoading] = useState(true);
+  const [monthlyError, setMonthlyError] = useState<string | null>(null);
 
   async function fetchDaily() {
     setDailyLoading(true);
@@ -70,6 +85,26 @@ export default function ReportsPage() {
       }
     }
     fetchWeekly();
+  }, []);
+
+  useEffect(() => {
+    async function fetchMonthly() {
+      setMonthlyLoading(true);
+      setMonthlyError(null);
+      try {
+        const response = await fetch("/api/insights/monthly");
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || "Gagal mengambil laporan bulanan");
+        }
+        setMonthly(result.data);
+      } catch (err) {
+        setMonthlyError(err instanceof Error ? err.message : "Terjadi kesalahan");
+      } finally {
+        setMonthlyLoading(false);
+      }
+    }
+    fetchMonthly();
   }, []);
 
   return (
@@ -217,12 +252,71 @@ export default function ReportsPage() {
         </div>
 
         <div className="bg-[#151515] rounded-lg border border-[#222222] p-6">
-          <h2 className="text-lg font-semibold text-[#e6e6e6] mb-2">
-            Laporan Bulanan
-          </h2>
-          <p className="text-sm text-[#9aa0a6]">
-            Coming soon. (Nanti akan ditambahkan setelah weekly stabil.)
-          </p>
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-[#e6e6e6]">Laporan Bulanan</h2>
+              {monthly?.period && (
+                <p className="text-xs text-[#9aa0a6] mt-1">
+                  {monthly.period.from} – {monthly.period.to}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {monthlyLoading ? (
+            <div className="flex items-center justify-center h-36">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#c9f24b]"></div>
+            </div>
+          ) : monthlyError ? (
+            <div className="bg-[#2a1111] border border-[#5a1d1d] rounded-lg p-4">
+              <p className="text-[#ffb3b3]">{monthlyError}</p>
+            </div>
+          ) : monthly ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-[#142010] rounded-lg border border-[#22361a] p-4">
+                  <h3 className="font-medium text-[#c9f24b] mb-2">Sorotan</h3>
+                  <ul className="space-y-1 text-sm text-[#cde7a6]">
+                    {monthly.summary.highlights.map((h, i) => (
+                      <li key={i} className="flex items-start">
+                        <span className="mr-2">+</span>
+                        <span>{h}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-[#2a1111] rounded-lg border border-[#5a1d1d] p-4">
+                  <h3 className="font-medium text-[#ffb3b3] mb-2">Risiko</h3>
+                  <ul className="space-y-1 text-sm text-[#f0b0b0]">
+                    {monthly.summary.risks.map((r, i) => (
+                      <li key={i} className="flex items-start">
+                        <span className="mr-2">!</span>
+                        <span>{r}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-[#112329] rounded-lg border border-[#1e3f4a] p-4">
+                  <h3 className="font-medium text-[#8fd3ff] mb-2">Tindakan</h3>
+                  <ul className="space-y-2 text-sm leading-relaxed text-[#b5e2ff]">
+                    {monthly.summary.actions.map((a, i) => (
+                      <li key={i} className="flex items-start">
+                        <span className="mr-2 flex-none text-[#8fd3ff]" aria-hidden>
+                          →
+                        </span>
+                        <span>{a}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              <div className="bg-[#111111] border border-[#222222] rounded-lg p-4 text-sm text-[#cfd4d8]">
+                {monthly.detail}
+              </div>
+            </div>
+          ) : (
+            <p className="text-[#9aa0a6] text-sm">Belum ada laporan bulanan.</p>
+          )}
         </div>
       </main>
     </div>
