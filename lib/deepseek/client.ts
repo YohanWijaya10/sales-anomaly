@@ -31,6 +31,11 @@ export interface WeeklyInsight {
   notes: string;
 }
 
+export interface SalesPerformanceInsights {
+  period: { from: string; to: string };
+  insights: string[];
+}
+
 interface DeepSeekMessage {
   role: "system" | "user" | "assistant";
   content: string;
@@ -855,6 +860,150 @@ export function generateWeeklyFallbackInsight(input: {
     regions: input.regions,
     prev_regions: input.prev_regions,
   });
+}
+
+export async function generateSalesPerformanceInsights(input: {
+  period: { from: string; to: string };
+  totals: {
+    total_visits: number;
+    total_sales_amount: number;
+    total_sales_qty: number;
+  };
+  topByConversion: Array<{ name: string; conversion_rate: number; visits: number }>;
+  topBySales: Array<{ name: string; total_sales_amount: number }>;
+  outletTypeShare: Array<{
+    salesman_name: string;
+    outlet_type: string;
+    visit_count: number;
+    share: number;
+  }>;
+  timeOfDay: Array<{
+    salesman_name: string;
+    daypart: string;
+    visit_count: number;
+    success_rate: number;
+  }>;
+  visitPerDayBins: Array<{
+    label: string;
+    salesmen_count: number;
+    conversion_rate: number;
+  }>;
+}): Promise<SalesPerformanceInsights> {
+  const systemPrompt = `Anda adalah analis performa sales. Buat insight singkat dan actionable berdasarkan data agregat.
+
+ATURAN PENTING:
+1. Keluarkan HANYA JSON valid sesuai format yang diminta.
+2. Jangan mengada-ada. Jika data tidak cukup, tulis insight yang aman.
+3. Setiap insight 1 kalimat, maksimal 20 kata.
+4. Gunakan angka persis yang diberikan.
+
+FORMAT OUTPUT:
+{
+  "period": { "from": "YYYY-MM-DD", "to": "YYYY-MM-DD" },
+  "insights": ["3-5 kalimat insight"]
+}`;
+
+  const userPrompt = `Data agregat periode ${input.period.from} – ${input.period.to}:
+
+${JSON.stringify(input, null, 2)}
+
+Hasilkan 3-5 insight yang actionable. Contoh pola:
+- Sales unggul karena fokus tipe outlet tertentu (jika outletTypeShare tersedia).
+- Waktu kunjungan tertentu memiliki success rate rendah/tinggi (jika timeOfDay tersedia).
+- Pola kunjungan per hari vs konversi (jika visitPerDayBins tersedia).
+`;
+
+  try {
+    const response = await callDeepSeek([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ]);
+
+    const parsed = JSON.parse(response) as SalesPerformanceInsights;
+    if (
+      !parsed.period ||
+      !Array.isArray(parsed.insights) ||
+      parsed.insights.length === 0
+    ) {
+      throw new Error("Invalid response structure");
+    }
+
+    return parsed;
+  } catch {
+    const fallback = buildSalesPerformanceFallback(input);
+    return { period: input.period, insights: fallback };
+  }
+}
+
+function buildSalesPerformanceFallback(input: {
+  topByConversion: Array<{ name: string; conversion_rate: number; visits: number }>;
+  outletTypeShare: Array<{
+    salesman_name: string;
+    outlet_type: string;
+    visit_count: number;
+    share: number;
+  }>;
+  timeOfDay: Array<{
+    salesman_name: string;
+    daypart: string;
+    visit_count: number;
+    success_rate: number;
+  }>;
+  visitPerDayBins: Array<{
+    label: string;
+    salesmen_count: number;
+    conversion_rate: number;
+  }>;
+}): string[] {
+  const insights: string[] = [];
+
+  if (input.topByConversion.length > 0) {
+    const top = input.topByConversion[0];
+    insights.push(
+      `${top.name} memimpin konversi ${formatPercentage(
+        top.conversion_rate
+      )} dari ${top.visits} kunjungan.`,
+    );
+  }
+
+  const topType = input.outletTypeShare
+    .filter((o) => o.share >= 0.5)
+    .sort((a, b) => b.share - a.share)[0];
+  if (topType) {
+    insights.push(
+      `${topType.salesman_name} dominan di ${topType.outlet_type} (${formatPercentage(
+        topType.share
+      )} kunjungan).`,
+    );
+  }
+
+  const lowTime = input.timeOfDay
+    .filter((t) => t.visit_count >= 5)
+    .sort((a, b) => a.success_rate - b.success_rate)[0];
+  if (lowTime && lowTime.success_rate < 0.2) {
+    insights.push(
+      `${lowTime.salesman_name} rendah di ${lowTime.daypart} (${formatPercentage(
+        lowTime.success_rate
+      )}), pertimbangkan ganti jadwal.`,
+    );
+  }
+
+  const bestBin = input.visitPerDayBins
+    .filter((b) => b.salesmen_count > 0)
+    .sort((a, b) => b.conversion_rate - a.conversion_rate)[0];
+  if (bestBin) {
+    insights.push(
+      `Pola ${bestBin.label} kunjungan/hari menunjukkan konversi tertinggi (${formatPercentage(
+        bestBin.conversion_rate
+      )}).`,
+    );
+  }
+
+  if (insights.length === 0) {
+    insights.push("Data belum cukup untuk insight spesifik minggu ini.");
+  }
+
+  return insights.slice(0, 5);
 }
 
 export function generateFallbackInsight(
